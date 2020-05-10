@@ -37,33 +37,63 @@ namespace WeaponsOverhaul
 		//public Randomizer Randomizer = new Randomizer();
 
 		// Unused stuff
-		[XmlIgnore]
+		[ProtoMember(50)]
 		public float ReleaseTimeAfterFire;
 
 		[XmlIgnore]
 		public MyStringHash PhysicalMaterial;
-
-		//[XmlIgnore]
-		//public float DamageMultiplier;
-
-		[XmlIgnore]
+		[ProtoMember(60)]
 		public int MuzzleFlashLifeSpan;
-
-		//[XmlIgnore]
-		//public bool UseDefaultMuzzleFlash;
-
-		[XmlIgnore]
-		public MySoundPair NoAmmoSound;
-
-		[XmlIgnore]
-		public MySoundPair ReloadSound;
+		[ProtoMember(70)]
+		public string NoAmmoSound;
+		[ProtoMember(80)]
+		public string ReloadSound;
+		[ProtoMember(90)]
+		public string SecondarySound;
 
 		[XmlIgnore]
-		public MySoundPair SecondarySound;
+		public MySoundPair NoAmmoSoundPair;
+		[XmlIgnore]
+		public MySoundPair ReloadSoundPair;
+		[XmlIgnore]
+		public MySoundPair SecondarySoundPair;
 
 		public WeaponDefinition Clone()
 		{
-			return new WeaponDefinition();
+			return new WeaponDefinition {
+				Enabled = Enabled,
+				SubtypeId = SubtypeId,
+				DeviateShotAngle = DeviateShotAngle,
+				ReloadTime = ReloadTime,
+				AmmoData = AmmoData,
+				ReleaseTimeAfterFire = ReleaseTimeAfterFire,
+				PhysicalMaterial = PhysicalMaterial,
+				MuzzleFlashLifeSpan = MuzzleFlashLifeSpan,
+				NoAmmoSound = NoAmmoSound,
+				ReloadSound = ReloadSound,
+				SecondarySound = SecondarySound,
+				NoAmmoSoundPair = NoAmmoSoundPair,
+				ReloadSoundPair = ReloadSoundPair,
+				SecondarySoundPair = SecondarySoundPair,
+			};
+		}
+
+		public void Copy(WeaponDefinition w)
+		{
+			Enabled = w.Enabled;
+			SubtypeId = w.SubtypeId;
+			DeviateShotAngle = w.DeviateShotAngle;
+			ReloadTime = w.ReloadTime;
+			AmmoData = w.AmmoData;
+			ReleaseTimeAfterFire = w.ReleaseTimeAfterFire;
+			PhysicalMaterial = w.PhysicalMaterial;
+			MuzzleFlashLifeSpan = w.MuzzleFlashLifeSpan;
+			NoAmmoSound = w.NoAmmoSound;
+			ReloadSound = w.ReloadSound;
+			SecondarySound = w.SecondarySound;
+			NoAmmoSoundPair = w.NoAmmoSoundPair;
+			ReloadSoundPair = w.ReloadSoundPair;
+			SecondarySoundPair = w.SecondarySoundPair;
 		}
 
 		public static WeaponDefinition CreateFromKeenDefinition(MyWeaponDefinition w)
@@ -74,12 +104,15 @@ namespace WeaponsOverhaul
 				DeviateShotAngle = w.DeviateShotAngle,
 				ReloadTime = w.ReloadTime,
 				ReleaseTimeAfterFire = w.ReleaseTimeAfterFire,
-				DamageMultiplier = w.DamageMultiplier,
+				//DamageMultiplier = w.DamageMultiplier,
 				PhysicalMaterial = w.PhysicalMaterial,
 				MuzzleFlashLifeSpan = w.MuzzleFlashLifeSpan,
-				NoAmmoSound = w.NoAmmoSound,
-				ReloadSound = w.ReloadSound,
-				SecondarySound = w.SecondarySound,
+				NoAmmoSound = w.NoAmmoSound.SoundId.ToString(),
+				ReloadSound = w.ReloadSound.SoundId.ToString(),
+				SecondarySound = w.SecondarySound.SoundId.ToString(),
+				NoAmmoSoundPair = w.NoAmmoSound,
+				ReloadSoundPair = w.ReloadSound,
+				SecondarySoundPair = w.SecondarySound,
 				AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
 
 
@@ -97,8 +130,11 @@ namespace WeaponsOverhaul
 		[ProtoMember(20)]
 		public int ShotsInBurst;
 
+		[ProtoMember(30)]
+		public string ShootSound;
+
 		[XmlIgnore]
-		public MySoundPair ShootSound;
+		public MySoundPair ShootSoundPair;
 
 		public WeaponAmmoDefinition Clone()
 		{
@@ -106,15 +142,19 @@ namespace WeaponsOverhaul
 				RateOfFire = RateOfFire,
 				ShotsInBurst = ShotsInBurst,
 				ShootSound = ShootSound,
+				ShootSoundPair = ShootSoundPair
 			};
 		}
 
 		public static WeaponAmmoDefinition CreateFromKeenDefinition(MyWeaponAmmoData a)
 		{
+			Tools.Debug(a.ShootSound.SoundId.ToString());
 			return new WeaponAmmoDefinition {
 				RateOfFire = a.RateOfFire,
 				ShotsInBurst = a.ShotsInBurst,
-				ShootSound = a.ShootSound,
+
+				ShootSound = a.ShootSound.SoundId.ToString(),
+				ShootSoundPair = a.ShootSound,
 			};
 		}
 	}
