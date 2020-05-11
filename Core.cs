@@ -5,17 +5,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace WeaponsOverhaul
 {
     [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation | MyUpdateOrder.BeforeSimulation)]
     public class Core : MyNetworkSessionComponent
     {
-        public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
+		#region setup
+		public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
         private static HashSet<Projectile> PendingProjectiles = new HashSet<Projectile>();
         private static HashSet<Projectile> ActiveProjectiles = new HashSet<Projectile>();
         private static HashSet<Projectile> ExpiredProjectiles = new HashSet<Projectile>();
-
 
         public const ushort ModId = 12144;
         public const string ModName = "WeaponsOverhaul";
@@ -52,6 +54,9 @@ namespace WeaponsOverhaul
         {
             Network.Close();
         }
+        #endregion
+
+        #region projectile logic
 
         public static void SpawnProjectile(Projectile data)
         {
@@ -63,6 +68,11 @@ namespace WeaponsOverhaul
 
         public override void UpdateBeforeSimulation()
         {
+            //if (!MyAPIGateway.Utilities.IsDedicated)
+            //{
+            //    MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
+            //}
+
             ActiveProjectiles.ExceptWith(ExpiredProjectiles);
             ExpiredProjectiles.Clear();
 
@@ -70,20 +80,8 @@ namespace WeaponsOverhaul
             PendingProjectiles.Clear();
 
             MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
-                if (!p.Initialized)
-                {
-                    p.Init();
-                }
 
-                p.PreUpdate();
-
-                if (p.DoCollisionCheck())
-                {
-                    p.PreCollitionDetection();
-                    p.CollisionDetection();
-                }
-
-                p.Update();
+                ProjectileMovement.Update(p);
 
                 if (p.HasExpired)
                 {
@@ -101,7 +99,7 @@ namespace WeaponsOverhaul
 
                 if (def.Victim != null)
                 {
-                    def.Victim.DoDamage(def.Damage, def.DamageType, def.Sync, def.Hit, def.AttackerId);
+                    def.Victim.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.AttackerId);
 
                     if (def.ImpulseEntity?.Physics != null && def.ImpulseForce != null && def.ImpulsePosition != null)
                     {
@@ -122,6 +120,8 @@ namespace WeaponsOverhaul
                 }
             }
         }
+
+		#endregion
 	}
 }
 

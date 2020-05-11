@@ -1,5 +1,4 @@
-﻿using VRage.Game.ModAPI;
-using VRage.Game.ModAPI.Interfaces;
+﻿using VRage.Game.ModAPI.Interfaces;
 using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
@@ -8,17 +7,13 @@ namespace WeaponsOverhaul
 {
     public class DamageDefinition
     {
+        public long AttackerId;
+
         public IMyDestroyableObject Victim;
 
         public float Damage;
 
         public MyStringHash DamageType;
-
-        public bool Sync;
-
-        public MyHitInfo? Hit;
-
-        public long AttackerId;
 
         public IMyEntity ImpulseEntity;
 

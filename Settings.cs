@@ -49,41 +49,6 @@ namespace WeaponsOverhaul
 		public static Dictionary<string, WeaponDefinition> WeaponDefinitionLookup { get; private set; } = new Dictionary<string, WeaponDefinition>();
 
 		/// <summary>
-		/// returns a clone of the matching ammo defintion
-		/// </summary>
-		/// <param name="id">SubtypeId</param>
-		/// <returns></returns>
-		public static AmmoDefinition GetAmmoDefinition(string id)
-		{
-			if (AmmoDefinitionLookup.ContainsKey(id))
-			{
-				return AmmoDefinitionLookup[id].Clone();
-			}
-
-			Tools.Debug($"Ammo definition was not found! This is bad!");
-
-			return new AmmoDefinition();
-		}
-
-		/// <summary>
-		/// returns a clone of the matching weapon defintion
-		/// </summary>
-		/// <param name="id">SubtypeId</param>
-		/// <returns></returns>
-		public static WeaponDefinition GetWeaponDefinition(string id)
-		{
-			if (WeaponDefinitionLookup.ContainsKey(id))
-			{
-				return WeaponDefinitionLookup[id].Clone();
-			}
-
-			Tools.Debug($"Weapon definition was not found! This is bad!");
-
-			return new WeaponDefinition();
-
-		}
-
-		/// <summary>
 		/// From server to client only
 		/// This function is called when clients make a pull request
 		/// </summary>

@@ -73,7 +73,7 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void SystemRestart()
 		{
-			WeaponDefinition d = Settings.GetWeaponDefinition(((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String);
+			WeaponDefinition d = Settings.WeaponDefinitionLookup[((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String];
 			Copy(d);
 
 			WillFireThisFrame = false;
@@ -179,7 +179,7 @@ namespace WeaponsOverhaul
 				MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
 
 				string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
-				AmmoDefinition ammo = Settings.GetAmmoDefinition(ammoId);
+				AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
 
 				while (TimeTillNextShot >= 1)
 				{
@@ -189,15 +189,7 @@ namespace WeaponsOverhaul
 					//	Randomizer.ApplyDeviation(Entity, muzzleMatrix.Forward, DeviateShotAngle),
 					//	muzzleMatrix.Up);
 
-					Projectile bullet = new Projectile();
-					bullet.ParentBlockId = Entity.EntityId;
-					bullet.PartentSlim = Cube.SlimBlock;
-					bullet.AmmoId = ammoId;
-					bullet.InitialGridVelocity = Block.CubeGrid.Physics.LinearVelocity;
-					bullet.Direction = positionMatrix.Forward;
-					bullet.Velocity = Block.CubeGrid.Physics.LinearVelocity + (positionMatrix.Forward * ammo.DesiredSpeed);
-					bullet.Position = positionMatrix.Translation;
-
+					Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
 					Core.SpawnProjectile(bullet);
 					gun.GunBase.ConsumeAmmo();
 					TimeTillNextShot--;
