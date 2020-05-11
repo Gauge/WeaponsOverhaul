@@ -19,19 +19,17 @@ namespace WeaponsOverhaul
 	{
 		public bool Initialized { get; private set; } = false;
 		public bool IsFixedGun { get; private set; }
+
+		public bool IsFixedGunTerminalShoot => (IsFixedGun && !((Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME));
 		public bool IsShooting => gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || (IsFixedGun && (Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME);
 
-		protected static bool ControlsUpdated;
-
-		protected NetSync<bool> TerminalShootOnce;
-		protected NetSync<bool> TerminalShooting;
-		
+		public NetSync<bool> TerminalShootOnce { get; private set; }
+		public NetSync<bool> TerminalShooting { get; private set; }
+		protected NetSync<float> CurrentReloadTime;
 
 
 		protected bool WillFireThisFrame;
-
 		protected int CurrentShotInBurst = 0;
-		protected float CurrentReloadTime = 0;
 		protected float CurrentReleaseTime = 0;
 		protected double TimeTillNextShot = 1d;
 		protected float CurrentIdleReloadTime = 0;
@@ -43,7 +41,10 @@ namespace WeaponsOverhaul
 		protected IMyCubeBlock Cube;
 		protected IMyGunObject<MyGunBase> gun;
 
-		public void Init(WeaponControlLayer layer)
+		/// <summary>
+		/// Called when game logic is added to container
+		/// </summary>
+		public virtual void Init(WeaponControlLayer layer)
 		{
 			ControlLayer = layer;
 			Entity = (MyEntity)layer.Entity;
@@ -54,12 +55,21 @@ namespace WeaponsOverhaul
 
 			TerminalShootOnce = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			TerminalShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
+			CurrentReloadTime = new NetSync<float>(ControlLayer, TransferType.ServerToClient, 0);
+			CurrentReloadTime.ValueChangedByNetwork += CurrentReloadTimeUpdate;
 
 			Initialized = true;
 		}
 
 		/// <summary>
-		/// Used to update the definition when syncing to the server
+		/// Called before update loop begins
+		/// </summary>
+		public virtual void Start() 
+		{ 
+		}
+
+		/// <summary>
+		/// Updates the definition when syncing to the server
 		/// </summary>
 		public virtual void SystemRestart()
 		{
@@ -69,39 +79,21 @@ namespace WeaponsOverhaul
 			WillFireThisFrame = false;
 
 			CurrentShotInBurst = 0;
-			CurrentReloadTime = 0;
+			CurrentReloadTime.SetValue(0, SyncType.None);
 			CurrentReleaseTime = 0;
 			TimeTillNextShot = 1d;
 			CurrentIdleReloadTime = 0;
 		}
 
-		public virtual void OnAddedToContainer()
-		{
-
-		}
-
-		public virtual void OnAddedToScene()
-		{
-			OverrideDefaultControls();
-		}
-
-		public virtual void OnRemovedFromScene() { }
-
-		public virtual void OnBeforeRemovedFromContainer() { }
-
-		public virtual void MarkForClose() { }
-
-		public virtual void UpdateAfterSimulation() { }
-
-		public virtual void UpdateAfterSimulation10() { }
-
-		public virtual void UpdateAfterSimulation100() { }
-
-		public virtual void UpdateBeforeSimulation()
+		/// <summary>
+		/// First call in the update loop
+		/// Used to update the firing state of this weapon
+		/// </summary>
+		public virtual void Update()
 		{
 			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
 			//{
-			//	MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
+			//	MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
 			//}
 
 			// true until proven false
@@ -109,9 +101,9 @@ namespace WeaponsOverhaul
 
 			// If cooldown is greater than 0 the gun is on cooldown and should not fire
 			// reduce cooldown and dont fire projectiles
-			if (CurrentReloadTime > 0)
+			if (CurrentReloadTime.Value > 0)
 			{
-				CurrentReloadTime -= Tools.MillisecondPerFrame;
+				CurrentReloadTime.SetValue(CurrentReloadTime.Value-Tools.MillisecondPerFrame, SyncType.None);
 				WillFireThisFrame = false;
 			}
 
@@ -163,24 +155,27 @@ namespace WeaponsOverhaul
 
 			IdleReload();
 			TerminalShootOnce.SetValue(false, SyncType.None);
-
-			Spawn();
 		}
 
-		public virtual void UpdateBeforeSimulation10() { }
-
-		public virtual void UpdateBeforeSimulation100() { }
-
-		public virtual void UpdateOnceBeforeFrame() { }
-
-		public virtual void UpdatingStopped() { }
-
-		public virtual void Close() { }
-
+		/// <summary>
+		/// Second call in the update loop
+		/// Handles spawning projectiles
+		/// </summary>
 		public virtual void Spawn()
 		{
 			if (TimeTillNextShot >= 1 && WillFireThisFrame)
 			{
+				// Fixed guns do not update unless the mouse is pressed.
+				// This updates the position when terminal fire is active.
+				if (IsFixedGunTerminalShoot)
+				{
+					MyEntitySubpart subpart;
+					if (Entity.Subparts.TryGetValue("Barrel", out subpart))
+					{
+						gun.GunBase.WorldMatrix = subpart.PositionComp.WorldMatrixRef;
+					}
+				}
+
 				MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
 
 				string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
@@ -211,16 +206,20 @@ namespace WeaponsOverhaul
 
 
 					CurrentShotInBurst++;
-					if (CurrentShotInBurst == AmmoData.ShotsInBurst)
+					if (AmmoData.ShotsInBurst == 0)
+					{
+						CurrentShotInBurst = 0;
+					}
+					else if (CurrentShotInBurst == AmmoData.ShotsInBurst)
 					{
 						TimeTillNextShot = 0;
 						CurrentShotInBurst = 0;
-						CurrentReloadTime = ReloadTime;
+						CurrentReloadTime.Value = ReloadTime;
 						break;
 					}
 
 					var forceVector = -positionMatrix.Forward * ammo.BackkickForce;
-					Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, Block.WorldAABB.Center, null);
+					Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, positionMatrix.Translation, null);
 
 					if (TerminalShootOnce.Value)
 					{
@@ -237,7 +236,23 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		public virtual void IdleReload()
+		/// <summary>
+		/// Third call in the update loop
+		/// Handles animating small gatling gun barrel animations
+		/// </summary>
+		public virtual void Animate() 
+		{ 
+		}
+
+		/// <summary>
+		/// called on game logic closed
+		/// </summary>
+		public virtual void Close() 
+		{
+			CurrentReloadTime.ValueChangedByNetwork -= CurrentReloadTimeUpdate;
+		}
+
+		protected virtual void IdleReload()
 		{
 			if (!IsShooting && CurrentShotInBurst > 0)
 			{
@@ -255,319 +270,15 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		protected void OverrideDefaultControls()
+		protected void CurrentReloadTimeUpdate(float o, float n, ulong steamId)
 		{
-			if (!WeaponControlLayer.DefaultTerminalControlsInitialized)
+			if (n == ReloadTime)
 			{
-				WeaponControlLayer.TerminalIntitalize();
-			}
-
-			if (WeaponControlLayer.IsThisBlockBlacklisted(Entity))
-			{
-				ControlLayer.MarkForClose();
-				ControlsUpdated = true;
-				return;
-			}
-
-			if (ControlsUpdated)
-				return;
-
-			ControlsUpdated = true;
-
-			List<IMyTerminalAction> actions = new List<IMyTerminalAction>();
-
-			if (Entity is IMyLargeTurretBase)
-			{
-				MyAPIGateway.TerminalControls.GetActions<IMyLargeTurretBase>(out actions);
-			}
-			else if (Entity is IMySmallGatlingGun)
-			{
-				MyAPIGateway.TerminalControls.GetActions<IMySmallGatlingGun>(out actions);
-			}
-
-			foreach (IMyTerminalAction a in actions)
-			{
-				if (a.Id == "Shoot")
-				{
-					a.Action = (block) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon;
-								if (wb == null)
-									return;
-
-								wb.TerminalShooting.Value = !wb.TerminalShooting.Value;
-							}
-							else // below is a fallback if the block has been black listed
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									WeaponControlLayer.TerminalShootActionTurretBase.Invoke(block);
-								}
-								else
-								{
-									WeaponControlLayer.TerminalShootActionGatlingGun.Invoke(block);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed the shoot on/off action\n {e}");
-						}
-					};
-
-					a.Writer = (block, text) => {
-						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-						if (logic != null)
-						{
-							WeaponsFiringWriter(logic.Weapon, text);
-						}
-						else // below is a fallback if the block has been black listed
-						{
-							if (Entity is IMyLargeTurretBase)
-							{
-								WeaponControlLayer.TerminalShootWriterTurretBase(block, text);
-							}
-							else
-							{
-								WeaponControlLayer.TerminalShootWriterGatlingGun(block, text);
-							}
-						}
-					};
-				}
-				else if (a.Id == "ShootOnce")
-				{
-					a.Action = (block) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon;
-
-								if (wb != null && !wb.TerminalShootOnce.Value)
-								{
-									wb.TerminalShootOnce.Value = true;
-								}
-							}
-							else // below is a fallback if the block has been black listed
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									WeaponControlLayer.TerminalShootOnceActionTurretBase.Invoke(block);
-								}
-								else
-								{
-									WeaponControlLayer.TerminalShootOnceActionGatlingGun.Invoke(block);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed the shoot once action\n {e}");
-						}
-					};
-				}
-				if (a.Id == "Shoot_On")
-				{
-					a.Action = (block) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon;
-
-								if (wb != null && !wb.TerminalShooting.Value)
-								{
-									wb.TerminalShooting.Value = true;
-								}
-							}
-							else // below is a fallback if the block has been black listed
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									WeaponControlLayer.TerminalShootOnActionTurretBase.Invoke(block);
-								}
-								else
-								{
-									WeaponControlLayer.TerminalShootOnActionGatlingGun.Invoke(block);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed the shoot on action\n {e}");
-						}
-					};
-
-					a.Writer = (block, text) => {
-
-						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-						if (logic != null)
-						{
-							WeaponsFiringWriter(logic.Weapon, text);
-						}
-						else // below is a fallback if the block has been black listed
-						{
-							if (Entity is IMyLargeTurretBase)
-							{
-								WeaponControlLayer.TerminalShootOnWriterTurretBase(block, text);
-							}
-							else
-							{
-								WeaponControlLayer.TerminalShootOnWriterGatlingGun(block, text);
-							}
-						}
-					};
-
-				}
-				else if (a.Id == "Shoot_Off")
-				{
-					a.Action = (block) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon as WeaponBase;
-
-								if (wb != null && wb.TerminalShooting.Value)
-								{
-
-									wb.TerminalShooting.Value = false;
-								}
-							}
-							else
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									WeaponControlLayer.TerminalShootOffActionTurretBase.Invoke(block);
-								}
-								else
-								{
-									WeaponControlLayer.TerminalShootOffActionGatlingGun.Invoke(block);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed the shoot off action\n {e}");
-						}
-					};
-
-					a.Writer = (block, text) => {
-
-						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-						if (logic != null)
-						{
-							WeaponsFiringWriter(logic.Weapon, text);
-						}
-						else
-						{
-							if (Entity is IMyLargeTurretBase)
-							{
-								WeaponControlLayer.TerminalShootOffWriterTurretBase(block, text);
-							}
-							else
-							{
-								WeaponControlLayer.TerminalShootOffWriterGatlingGun(block, text);
-							}
-						}
-					};
-				}
-			}
-
-			List<IMyTerminalControl> controls = new List<IMyTerminalControl>();
-			if (Entity is IMyLargeTurretBase)
-			{
-				MyAPIGateway.TerminalControls.GetControls<IMyLargeTurretBase>(out controls);
-			}
-			else if (Entity is IMySmallGatlingGun)
-			{
-				MyAPIGateway.TerminalControls.GetControls<IMySmallGatlingGun>(out controls);
-			}
-
-			foreach (IMyTerminalControl c in controls)
-			{
-				if (c.Id == "Shoot")
-				{
-					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
-
-					onoff.Setter = (block, value) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon as WeaponBase;
-
-								if (wb != null && wb.TerminalShooting.Value != value)
-								{
-									wb.TerminalShooting.Value = value;
-								}
-							}
-							else
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									WeaponControlLayer.TerminalShootSetterTurretBase.Invoke(block, value);
-								}
-								else
-								{
-									WeaponControlLayer.TerminalShootSetterGatlingGun.Invoke(block, value);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed to toggle Shoot On/Off terminal control\n {e.ToString()}");
-						}
-					};
-
-					onoff.Getter = (block) => {
-						try
-						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								return logic.Weapon.TerminalShooting.Value;
-							}
-							else
-							{
-								if (Entity is IMyLargeTurretBase)
-								{
-									return WeaponControlLayer.TerminalShootGetterTurretBase.Invoke(block);
-								}
-								else
-								{
-									return WeaponControlLayer.TerminalShootGetterGatlingGun.Invoke(block);
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							Tools.Warning($"Failed to get the Shoot On/Off terminal control\n {e}");
-							return false;
-						}
-					};
-				}
+				float delta = NetworkAPI.GetDeltaMilliseconds(CurrentReloadTime.LastMessageTimestamp);
+				CurrentReloadTime.SetValue(CurrentReloadTime.Value - delta, SyncType.None);
+				Tools.Debug($"ReloadTime: {delta}ms latency adjustment");
 			}
 		}
 
-		protected void WeaponsFiringWriter(WeaponBase wb, StringBuilder str)
-		{
-			if (wb != null && wb.TerminalShooting.Value)
-			{
-				str.Append("On");
-			}
-			else
-			{
-				str.Append("Off");
-			}
-		}
 	}
 }

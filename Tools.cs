@@ -11,7 +11,7 @@ namespace WeaponsOverhaul
 		public static float MaxSpeedLimit => ((MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed > MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) ?
 MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) + 10;
 
-		private const bool LogDebugMessages = true;
+		public static bool DebugMode = false;
 		private const string Prefix = "[WeaponsOverhaul] ";
 
 		public static void Info(string message) 
@@ -31,7 +31,7 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 
 		public static void Debug(string message) 
 		{
-			if (LogDebugMessages)
+			if (DebugMode)
 			{
 				MyLog.Default.Info($"[DEBUG] {Prefix}{message}");
 			}

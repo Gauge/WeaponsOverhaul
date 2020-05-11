@@ -26,8 +26,9 @@ namespace WeaponsOverhaul
 		[ProtoMember(40)]
 		public float BackkickForce;
 
-		[ProtoMember(41)]
-		public string PhysicalMaterial;
+		//[ProtoMember(41)]
+		//public string PhysicalMaterial;
+
 
 		// From MyProjectileAmmoDefinition
 		[ProtoMember(50)]
@@ -60,6 +61,8 @@ namespace WeaponsOverhaul
 		[ProtoMember(120)]
 		public int ProjectileCount;
 
+
+
 		public AmmoDefinition Clone()
 		{
 			return new AmmoDefinition() {
@@ -69,7 +72,7 @@ namespace WeaponsOverhaul
 				SpeedVariance = SpeedVariance,
 				MaxTrajectory = MaxTrajectory,
 				BackkickForce = BackkickForce,
-				PhysicalMaterial = PhysicalMaterial,
+				//PhysicalMaterial = PhysicalMaterial,
 
 				ProjectileHitImpulse = ProjectileHitImpulse,
 				ProjectileTrailScale = ProjectileTrailScale,
@@ -93,7 +96,7 @@ namespace WeaponsOverhaul
 				SpeedVariance = p.SpeedVar,
 				MaxTrajectory = p.MaxTrajectory,
 				BackkickForce = p.BackkickForce,
-				PhysicalMaterial = p.PhysicalMaterial.ToString(),
+				//PhysicalMaterial = p.PhysicalMaterial.ToString(),
 
 				ProjectileHitImpulse = p.ProjectileHitImpulse,
 				ProjectileTrailScale = p.ProjectileTrailScale,

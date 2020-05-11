@@ -27,7 +27,9 @@ namespace WeaponsOverhaul
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            NetworkAPI.LogNetworkTraffic = true;
+            NetworkAPI.LogNetworkTraffic = false;
+            Tools.DebugMode = false;
+
             if (!NetworkAPI.IsInitialized)
             {
                 NetworkAPI.Init(ModId, ModName, ModKeyword);
@@ -120,6 +122,6 @@ namespace WeaponsOverhaul
                 }
             }
         }
-    }
+	}
 }
 

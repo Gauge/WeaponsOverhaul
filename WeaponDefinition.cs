@@ -114,9 +114,6 @@ namespace WeaponsOverhaul
 				ReloadSoundPair = w.ReloadSound,
 				SecondarySoundPair = w.SecondarySound,
 				AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
-
-
-
 			};
 		}
 	}
@@ -148,7 +145,6 @@ namespace WeaponsOverhaul
 
 		public static WeaponAmmoDefinition CreateFromKeenDefinition(MyWeaponAmmoData a)
 		{
-			Tools.Debug(a.ShootSound.SoundId.ToString());
 			return new WeaponAmmoDefinition {
 				RateOfFire = a.RateOfFire,
 				ShotsInBurst = a.ShotsInBurst,

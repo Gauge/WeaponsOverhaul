@@ -118,12 +118,14 @@ namespace WeaponsOverhaul
 
 			foreach (AmmoDefinition a in KeenAmmoDefinitions)
 			{
-				AmmoDefinitionLookup.Add(a.SubtypeId, a);
-			}
-
-			foreach (WeaponDefinition w in KeenWeaponDefinitions)
-			{
-				WeaponDefinitionLookup.Add(w.SubtypeId, w);
+				if (AmmoDefinitionLookup.ContainsKey(a.SubtypeId))
+				{
+					AmmoDefinitionLookup[a.SubtypeId] = a;
+				}
+				else
+				{
+					AmmoDefinitionLookup.Add(a.SubtypeId, a);
+				}
 			}
 
 			foreach (AmmoDefinition a in Static.AmmoDefinitions)
@@ -131,7 +133,23 @@ namespace WeaponsOverhaul
 				if (AmmoDefinitionLookup.ContainsKey(a.SubtypeId))
 				{
 					AmmoDefinitionLookup[a.SubtypeId] = a;
-				} 
+				}
+				else
+				{
+					Tools.Error($"Could not find an existing defintion for {a.SubtypeId}");
+				}
+			}
+
+			foreach (WeaponDefinition w in KeenWeaponDefinitions)
+			{
+				if (WeaponDefinitionLookup.ContainsKey(w.SubtypeId))
+				{
+					WeaponDefinitionLookup[w.SubtypeId] = w;
+				}
+				else
+				{
+					WeaponDefinitionLookup.Add(w.SubtypeId, w);
+				}
 			}
 
 			foreach (WeaponDefinition w in Static.WeaponDefinitions)
@@ -139,6 +157,10 @@ namespace WeaponsOverhaul
 				if (WeaponDefinitionLookup.ContainsKey(w.SubtypeId))
 				{
 					WeaponDefinitionLookup[w.SubtypeId] = w;
+				}
+				else
+				{
+					Tools.Error($"Could not find an existing defintion for {w.SubtypeId}");
 				}
 			}
 		}
@@ -179,7 +201,6 @@ namespace WeaponsOverhaul
 						SpeedVariance = 0,
 						MaxTrajectory = 1000,
 						BackkickForce = 50,
-						PhysicalMaterial = "GunBullet",
 						ProjectileTrailScale = 1.1f,
 						ProjectileHitImpulse = 5,
 						ProjectileMassDamage = 150,

@@ -1,5 +1,4 @@
 ﻿using ProtoBuf;
-using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
@@ -114,16 +113,17 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Draw()
 		{
-			if (MyAPIGateway.Utilities.IsDedicated)
-				return;
+			float length = 0.6f * 40f * Ammo.ProjectileTrailScale;
+			Vector3D startPoint = End - Direction * length;
 
-			float thickness = Ammo.ProjectileTrailScale * 0.2f;
-			float length = 20f * Ammo.ProjectileTrailScale;
+			float scaleFactor = MyParticlesManager.Paused ? 1f : MyUtils.GetRandomFloat(1f, 2f);
+			float thickness = (MyParticlesManager.Paused ? 0.2f : MyUtils.GetRandomFloat(0.2f, 0.3f)) * Ammo.ProjectileTrailScale;
+			thickness *= MathHelper.Lerp(0.2f, 0.8f, 1f);
 
 			MyTransparentGeometry.AddLineBillboard(
 					string.IsNullOrWhiteSpace(Ammo.ProjectileTrailMaterial) ? DefaultProjectileTrail : MyStringId.GetOrCompute(Ammo.ProjectileTrailMaterial),
 					new Vector4(Ammo.ProjectileTrailColor * 10f, 1f),
-					Position + (Direction * length),
+					Position - (Direction * length),
 					-Direction,
 					length,
 					thickness);
