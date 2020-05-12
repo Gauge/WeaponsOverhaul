@@ -23,6 +23,8 @@ namespace WeaponsOverhaul
 	[ProtoContract]
 	public class Settings
 	{
+		public static Action OnSettingsUpdated;
+
 		public static Settings Static = new Settings();
 		public static bool Initialized { get; private set; } = false;
 
@@ -31,9 +33,12 @@ namespace WeaponsOverhaul
 		private const string WeaponFilename = "WeaponDefinitionExample";
 
 		[ProtoMember(1)]
+		public bool DrawMuzzleFlash;
+
+		[ProtoMember(20)]
 		private List<AmmoDefinition> AmmoDefinitions = new List<AmmoDefinition>();
 
-		[ProtoMember(2)]
+		[ProtoMember(30)]
 		private List<WeaponDefinition> WeaponDefinitions = new List<WeaponDefinition>();
 
 		[XmlIgnore]
@@ -128,6 +133,17 @@ namespace WeaponsOverhaul
 					Tools.Error($"Could not find an existing defintion for {w.SubtypeId}");
 				}
 			}
+
+			if (Tools.DebugMode)
+			{
+				Tools.Debug($"Finished Loading Weapons");
+				foreach (var thing in WeaponDefinitionLookup)
+				{
+					Tools.Debug(thing.Value.ToString());
+				}
+			}
+
+			OnSettingsUpdated?.Invoke();
 		}
 
 		/// <summary>
@@ -183,6 +199,7 @@ namespace WeaponsOverhaul
 						DeviateShotAngle = 0.1f,
 						ReleaseTimeAfterFire = 100,
 						MuzzleFlashLifeSpan = 40,
+						MuzzleFlashSpriteName = "Muzzle_Flash_Large",
 						ReloadTime = 3000,
 						AmmoData = new WeaponAmmoDefinition {
 							ShootSound = "WepGatlingTurretShot",
@@ -236,6 +253,7 @@ namespace WeaponsOverhaul
 
 					if (w.Enabled)
 					{
+						Tools.Debug($"Load DeviateShotAngle: {w.DeviateShotAngle}");
 						Static.WeaponDefinitions.Add(w);
 					}
 				}

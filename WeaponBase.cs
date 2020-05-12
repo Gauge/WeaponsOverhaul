@@ -2,11 +2,8 @@
 using Sandbox.Game.Entities;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
-using Sandbox.ModAPI.Interfaces.Terminal;
 using SENetworkAPI;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -23,10 +20,10 @@ namespace WeaponsOverhaul
 		public bool IsFixedGunTerminalShoot => (IsFixedGun && !((Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME));
 		public bool IsShooting => gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || (IsFixedGun && (Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME);
 
-		public NetSync<bool> TerminalShootOnce { get; private set; }
-		public NetSync<bool> TerminalShooting { get; private set; }
+		public NetSync<bool> TerminalShootOnce;
+		public NetSync<bool> TerminalShooting;
 		protected NetSync<float> CurrentReloadTime;
-
+		protected NetSync<int> DeviationIndex;
 
 		protected bool WillFireThisFrame;
 		protected int CurrentShotInBurst = 0;
@@ -40,6 +37,8 @@ namespace WeaponsOverhaul
 		protected IMyFunctionalBlock Block;
 		protected IMyCubeBlock Cube;
 		protected IMyGunObject<MyGunBase> gun;
+
+		protected MyParticleEffect muzzleFlash;
 
 		/// <summary>
 		/// Called when game logic is added to container
@@ -57,6 +56,7 @@ namespace WeaponsOverhaul
 			TerminalShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			CurrentReloadTime = new NetSync<float>(ControlLayer, TransferType.ServerToClient, 0);
 			CurrentReloadTime.ValueChangedByNetwork += CurrentReloadTimeUpdate;
+			DeviationIndex = new NetSync<int>(ControlLayer, TransferType.ServerToClient, Tools.Random.Next(0, 128));
 
 			Initialized = true;
 		}
@@ -64,8 +64,8 @@ namespace WeaponsOverhaul
 		/// <summary>
 		/// Called before update loop begins
 		/// </summary>
-		public virtual void Start() 
-		{ 
+		public virtual void Start()
+		{
 		}
 
 		/// <summary>
@@ -73,7 +73,10 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void SystemRestart()
 		{
-			WeaponDefinition d = Settings.WeaponDefinitionLookup[((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String];
+			Tools.Debug($"Restarting Weapon Logic {Entity.EntityId}");
+
+			MyWeaponBlockDefinition blockDef = ((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition);
+			WeaponDefinition d = Settings.WeaponDefinitionLookup[blockDef.WeaponDefinitionId.SubtypeId.String];
 			Copy(d);
 
 			WillFireThisFrame = false;
@@ -91,10 +94,10 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Update()
 		{
-			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
-			//{
-			//	MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
-			//}
+			if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
+			{
+				//MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
+			}
 
 			// true until proven false
 			WillFireThisFrame = true;
@@ -103,7 +106,7 @@ namespace WeaponsOverhaul
 			// reduce cooldown and dont fire projectiles
 			if (CurrentReloadTime.Value > 0)
 			{
-				CurrentReloadTime.SetValue(CurrentReloadTime.Value-Tools.MillisecondPerFrame, SyncType.None);
+				CurrentReloadTime.SetValue(CurrentReloadTime.Value - Tools.MillisecondPerFrame, SyncType.None);
 				WillFireThisFrame = false;
 			}
 
@@ -163,6 +166,11 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Spawn()
 		{
+			if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
+			{
+				//MyAPIGateway.Utilities.ShowNotification($"Deviation Index: {DeviationIndex.Value} MFTime: {(MuzzleFlashLifeSpan/1000f).ToString("n2")} MFCurrent: {muzzleFlash?.GetElapsedTime().ToString("n2")}", 1);
+			}
+
 			if (TimeTillNextShot >= 1 && WillFireThisFrame)
 			{
 				// Fixed guns do not update unless the mouse is pressed.
@@ -177,25 +185,50 @@ namespace WeaponsOverhaul
 				}
 
 				MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
-
+				Vector3 direction = muzzleMatrix.Forward;
+				Vector3D origin = muzzleMatrix.Translation;
 				string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
 				AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
 
 				while (TimeTillNextShot >= 1)
 				{
-					MatrixD positionMatrix = muzzleMatrix;
-					//MatrixD positionMatrix = Matrix.CreateWorld(
-					//	muzzleMatrix.Translation,
-					//	Randomizer.ApplyDeviation(Entity, muzzleMatrix.Forward, DeviateShotAngle),
-					//	muzzleMatrix.Up);
+					// calculate deviation
+					int index = DeviationIndex.Value;
+					MatrixD positionMatrix = Matrix.CreateWorld(origin, Tools.ApplyDeviation(direction, DeviateShotAngle, ref index), muzzleMatrix.Up);
+					DeviationIndex.SetValue(index, SyncType.None);
 
+					// spawn projectile
 					Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
+					Tools.Debug($"{Entity.EntityId} Deviation Index: {DeviationIndex.Value}");
 					Core.SpawnProjectile(bullet);
 					gun.GunBase.ConsumeAmmo();
 					TimeTillNextShot--;
+
+					// apply knock back
+					if (ammo.BackkickForce > 0)
+					{
+						var forceVector = -direction * ammo.BackkickForce;
+						Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, forceVector, Block.GetPosition(), Vector3.Zero);
+					}
+
+					// create sound
 					//MakeShootSound();
 					//MakeSecondaryShotSound();
 
+					// create muzzle flash
+					if (!MyAPIGateway.Utilities.IsDedicated /*Settings.Static.DrawMuzzleFlash*/)
+					{
+						MatrixD matrix = MatrixD.CreateFromDir(direction);
+						matrix.Translation = origin;
+						if (muzzleFlash == null || muzzleFlash.IsStopped)
+						{
+							bool foundParticle = MyParticlesManager.TryCreateParticleEffect(MuzzleFlashSpriteName, ref matrix, ref origin, uint.MaxValue, out muzzleFlash);
+							if (foundParticle)
+							{
+								muzzleFlash.Play();
+							}
+						}
+					}
 
 					CurrentShotInBurst++;
 					if (AmmoData.ShotsInBurst == 0)
@@ -207,11 +240,10 @@ namespace WeaponsOverhaul
 						TimeTillNextShot = 0;
 						CurrentShotInBurst = 0;
 						CurrentReloadTime.Value = ReloadTime;
+						DeviationIndex.Push();
+						TerminalShootOnce.SetValue(false, SyncType.None);
 						break;
 					}
-
-					var forceVector = -positionMatrix.Forward * ammo.BackkickForce;
-					Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, positionMatrix.Translation, null);
 
 					if (TerminalShootOnce.Value)
 					{
@@ -232,14 +264,34 @@ namespace WeaponsOverhaul
 		/// Third call in the update loop
 		/// Handles animating small gatling gun barrel animations
 		/// </summary>
-		public virtual void Animate() 
-		{ 
+		public virtual void Animate()
+		{
+
+			if (!MyAPIGateway.Utilities.IsDedicated /*Settings.Static.DrawMuzzleFlash*/)
+			{
+				if (muzzleFlash != null)
+				{
+
+					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
+					Vector3 direction = muzzleMatrix.Forward;
+					Vector3D origin = muzzleMatrix.Translation;
+
+					MatrixD matrix = MatrixD.CreateFromDir(direction);
+					matrix.Translation = origin;
+					muzzleFlash.WorldMatrix = matrix;
+
+					if (muzzleFlash.GetElapsedTime() > MuzzleFlashLifeSpan / 1000f)
+					{
+						muzzleFlash.Stop();
+					}
+				}
+			}
 		}
 
 		/// <summary>
 		/// called on game logic closed
 		/// </summary>
-		public virtual void Close() 
+		public virtual void Close()
 		{
 			CurrentReloadTime.ValueChangedByNetwork -= CurrentReloadTimeUpdate;
 		}

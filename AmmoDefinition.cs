@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using Sandbox.Definitions;
+using Sandbox.ModAPI;
 using VRageMath;
 
 namespace WeaponsOverhaul
@@ -33,7 +34,7 @@ namespace WeaponsOverhaul
 		// From MyProjectileAmmoDefinition
 		[ProtoMember(50)]
 		public float ProjectileHitImpulse;
-		
+
 		[ProtoMember(60)]
 		public float ProjectileTrailScale;
 
@@ -61,7 +62,26 @@ namespace WeaponsOverhaul
 		[ProtoMember(120)]
 		public int ProjectileCount;
 
+		public void Copy(AmmoDefinition a)
+		{
+			SubtypeId = a.SubtypeId;
+			DesiredSpeed = a.DesiredSpeed;
+			SpeedVariance = a.SpeedVariance;
+			MaxTrajectory = a.MaxTrajectory;
+			BackkickForce = a.BackkickForce;
+			//PhysicalMaterial = a.PhysicalMaterial;
 
+			ProjectileHitImpulse = a.ProjectileHitImpulse;
+			ProjectileTrailScale = a.ProjectileTrailScale;
+			ProjectileTrailColor = a.ProjectileTrailColor;
+			ProjectileTrailMaterial = a.ProjectileTrailMaterial;
+			ProjectileTrailProbability = a.ProjectileTrailProbability;
+			ProjectileOnHitEffectName = a.ProjectileOnHitEffectName;
+			ProjectileMassDamage = a.ProjectileMassDamage;
+			ProjectileHealthDamage = a.ProjectileHealthDamage;
+			ProjectileHeadShotDamage = a.ProjectileHeadShotDamage;
+			ProjectileCount = a.ProjectileCount;
+		}
 
 		public AmmoDefinition Clone()
 		{
@@ -109,6 +129,11 @@ namespace WeaponsOverhaul
 				ProjectileHeadShotDamage = p.ProjectileHeadShotDamage,
 				ProjectileCount = p.ProjectileCount,
 			};
+		}
+
+		public override string ToString()
+		{
+			return MyAPIGateway.Utilities.SerializeToXML(this);
 		}
 	}
 }

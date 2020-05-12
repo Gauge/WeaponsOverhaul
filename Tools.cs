@@ -1,5 +1,7 @@
 ﻿using Sandbox.Definitions;
+using System;
 using VRage.Utils;
+using VRageMath;
 
 namespace WeaponsOverhaul
 {
@@ -49,6 +51,54 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 			}
 			return mult;
 		}
+
+
+		public static Random Random = new Random(77658);
+
+		private const int Seed = 5366354;
+		private static float[] RandomSet;
+		private static float[] RandomSetFromAngle;
+		public static Vector3 ApplyDeviation(Vector3 direction, float maxAngle, ref int index) 
+		{
+			//Debug($"Angle is {maxAngle}");
+			if (maxAngle == 0)
+				return direction;
+
+			if (RandomSet == null)
+			{
+				RandomSet = new float[128];
+				RandomSetFromAngle = new float[128];
+
+				Random rand = new Random(Seed);
+
+				for (int i = 0; i < 128; i++)
+				{
+					RandomSet[i] = (float)(rand.NextDouble() * Math.PI * 2);
+				}
+
+				for (int i = 0; i < 128; i++)
+				{
+					RandomSetFromAngle[i] = (float)rand.NextDouble();
+				}
+			}
+
+			index++;
+			if (index == 128)
+			{
+				index = 0;
+			}
+
+			Matrix matrix = Matrix.CreateFromDir(direction);
+
+			float randomFloat = (RandomSetFromAngle[index] * maxAngle * 2) - maxAngle;
+			float randomFloat2 = RandomSet[index];
+
+			Vector3 normal = -new Vector3(MyMath.FastSin(randomFloat) * MyMath.FastCos(randomFloat2), MyMath.FastSin(randomFloat) * MyMath.FastSin(randomFloat2), MyMath.FastCos(randomFloat));
+			return Vector3.TransformNormal(normal, matrix);
+		}
+
+
+
 
 	}
 }

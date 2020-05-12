@@ -43,7 +43,7 @@ namespace WeaponsOverhaul
 			if (!Weapon.Initialized)
 			{
 				Weapon.Init(this);
-				Core.OnSettingsUpdated += SystemRestart;
+				Settings.OnSettingsUpdated += SystemRestart;
 			}
 
 			if (Entity.InScene)
@@ -55,8 +55,6 @@ namespace WeaponsOverhaul
 		public override void OnAddedToScene()
 		{
 			base.OnAddedToScene();
-
-			TerminalIntitalize();
 		}
 
 		public override void Init(MyObjectBuilder_EntityBase objectBuilder)
@@ -79,8 +77,15 @@ namespace WeaponsOverhaul
 		{
 			base.UpdateBeforeSimulation();
 
+			TerminalIntitalize();
+
 			Weapon.Update();
 			Weapon.Spawn();
+			
+		}
+
+		public override void UpdateAfterSimulation() 
+		{
 			Weapon.Animate();
 		}
 
@@ -92,7 +97,7 @@ namespace WeaponsOverhaul
 
 		public override void Close()
 		{
-			Core.OnSettingsUpdated -= SystemRestart;
+			Settings.OnSettingsUpdated -= SystemRestart;
 			Weapon.Close();
 			base.Close();
 		}
@@ -117,12 +122,13 @@ namespace WeaponsOverhaul
 
 		private static void OverrideDefaultControls<T>()
 		{
-			List<IMyTerminalAction> actions = new List<IMyTerminalAction>();
-			MyAPIGateway.TerminalControls.GetActions<T>(out actions);
-
 			Action<IMyTerminalBlock> oldAction;
 			Action<IMyTerminalBlock, StringBuilder> oldWriter;
+			Func<IMyTerminalBlock, bool> oldGetter;
+			Action<IMyTerminalBlock, bool> oldSetter;
 
+			List<IMyTerminalAction> actions = new List<IMyTerminalAction>();
+			MyAPIGateway.TerminalControls.GetActions<T>(out actions);
 			foreach (IMyTerminalAction a in actions)
 			{
 				if (a.Id == "Shoot")
@@ -279,9 +285,6 @@ namespace WeaponsOverhaul
 
 			List<IMyTerminalControl> controls = new List<IMyTerminalControl>();
 			MyAPIGateway.TerminalControls.GetControls<T>(out controls);
-			Func<IMyTerminalBlock, bool> oldGetter;
-			Action<IMyTerminalBlock, bool> oldSetter;
-
 			foreach (IMyTerminalControl c in controls)
 			{
 				if (c.Id == "Shoot")

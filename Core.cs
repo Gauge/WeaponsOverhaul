@@ -23,14 +23,14 @@ namespace WeaponsOverhaul
         public const string ModName = "WeaponsOverhaul";
         public const string ModKeyword = "wo";
 
-        public static Action OnSettingsUpdated;
+
 
         public NetSync<Settings> NetSettings;
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            NetworkAPI.LogNetworkTraffic = false;
-            Tools.DebugMode = false;
+            NetworkAPI.LogNetworkTraffic = true;
+            Tools.DebugMode = true;
 
             if (!NetworkAPI.IsInitialized)
             {
@@ -38,16 +38,14 @@ namespace WeaponsOverhaul
             }
 
             Settings.Load();
-            OnSettingsUpdated?.Invoke();
 
             NetSettings = new NetSync<Settings>(this, TransferType.ServerToClient, Settings.Static);
             NetSettings.ValueChangedByNetwork += UpdateSettings;
         }
 
-        public void UpdateSettings(Settings old, Settings nu, ulong steamId)
+        public void UpdateSettings(Settings o, Settings n, ulong steamId)
         {
-            Settings.SetUserDefinitions(nu);
-            OnSettingsUpdated?.Invoke();
+            Settings.SetUserDefinitions(n);
         }
 
         protected override void UnloadData()
@@ -68,10 +66,10 @@ namespace WeaponsOverhaul
 
         public override void UpdateBeforeSimulation()
         {
-            //if (!MyAPIGateway.Utilities.IsDedicated)
-            //{
-            //    MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
-            //}
+            if (!MyAPIGateway.Utilities.IsDedicated)
+            {
+                MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
+            }
 
             ActiveProjectiles.ExceptWith(ExpiredProjectiles);
             ExpiredProjectiles.Clear();
