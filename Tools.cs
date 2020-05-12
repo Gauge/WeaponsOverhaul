@@ -10,6 +10,9 @@ namespace WeaponsOverhaul
 		public const float Tick = 1f / 60f;
 		public const float MillisecondPerFrame = 1000f / 60f;
 		public const double FireRateMultiplayer = 1d / 60d / 60d;
+
+		public static Random Random { get; } = new Random(77658);
+
 		public static float MaxSpeedLimit => ((MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed > MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) ?
 MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) + 10;
 
@@ -52,15 +55,11 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 			return mult;
 		}
 
-
-		public static Random Random = new Random(77658);
-
 		private const int Seed = 5366354;
 		private static float[] RandomSet;
 		private static float[] RandomSetFromAngle;
-		public static Vector3 ApplyDeviation(Vector3 direction, float maxAngle, ref int index) 
+		public static Vector3 ApplyDeviation(Vector3 direction, float maxAngle, ref sbyte index) 
 		{
-			//Debug($"Angle is {maxAngle}");
 			if (maxAngle == 0)
 				return direction;
 
@@ -82,10 +81,13 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 				}
 			}
 
-			index++;
-			if (index == 128)
+			if (index == 127)
 			{
 				index = 0;
+			}
+			else
+			{
+				index++;
 			}
 
 			Matrix matrix = Matrix.CreateFromDir(direction);

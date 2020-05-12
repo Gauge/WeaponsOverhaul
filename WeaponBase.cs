@@ -23,7 +23,7 @@ namespace WeaponsOverhaul
 		public NetSync<bool> TerminalShootOnce;
 		public NetSync<bool> TerminalShooting;
 		protected NetSync<float> CurrentReloadTime;
-		protected NetSync<int> DeviationIndex;
+		protected NetSync<sbyte> DeviationIndex;
 
 		protected bool WillFireThisFrame;
 		protected int CurrentShotInBurst = 0;
@@ -59,7 +59,7 @@ namespace WeaponsOverhaul
 			TerminalShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			CurrentReloadTime = new NetSync<float>(ControlLayer, TransferType.ServerToClient, 0);
 			CurrentReloadTime.ValueChangedByNetwork += CurrentReloadTimeUpdate;
-			DeviationIndex = new NetSync<int>(ControlLayer, TransferType.ServerToClient, Tools.Random.Next(0, 128));
+			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)Tools.Random.Next(0, sbyte.MaxValue));
 
 			PrimaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
 			SecondaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
@@ -125,10 +125,10 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Update()
 		{
-			if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
-			{
-				//MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
-			}
+			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
+			//{
+			//	MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
+			//}
 
 			// true until proven false
 			WillFireThisFrame = true;
@@ -173,8 +173,6 @@ namespace WeaponsOverhaul
 					TimeTillNextShot = 1;
 				}
 
-				//MyAPIGateway.Utilities.ShowNotification($"{!IsShooting}, {Cube?.CubeGrid?.Physics == null}, {gun.GunBase.HasEnoughAmmunition()} willFire: {WillFireThisFrame}, hasEnough:  Physical: ", 1);
-
 				WillFireThisFrame = false;
 			}
 
@@ -197,10 +195,10 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Spawn()
 		{
-			if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
-			{
-				//MyAPIGateway.Utilities.ShowNotification($"Deviation Index: {DeviationIndex.Value} MFTime: {(MuzzleFlashLifeSpan/1000f).ToString("n2")} MFCurrent: {muzzleFlash?.GetElapsedTime().ToString("n2")}", 1);
-			}
+			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
+			//{
+			//	MyAPIGateway.Utilities.ShowNotification($"Deviation Index: {DeviationIndex.Value} MFTime: {(MuzzleFlashLifeSpan/1000f).ToString("n2")} MFCurrent: {muzzleFlash?.GetElapsedTime().ToString("n2")}", 1);
+			//}
 
 			if (TimeTillNextShot >= 1 && WillFireThisFrame)
 			{
@@ -224,22 +222,21 @@ namespace WeaponsOverhaul
 				while (TimeTillNextShot >= 1)
 				{
 					// calculate deviation
-					int index = DeviationIndex.Value;
+					sbyte index = DeviationIndex.Value;
 					MatrixD positionMatrix = Matrix.CreateWorld(origin, Tools.ApplyDeviation(direction, DeviateShotAngle, ref index), muzzleMatrix.Up);
 					DeviationIndex.SetValue(index, SyncType.None);
 
 					// spawn projectile
 					Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
-					//Tools.Debug($"{Entity.EntityId} Deviation Index: {DeviationIndex.Value}");
 					Core.SpawnProjectile(bullet);
 					gun.GunBase.ConsumeAmmo();
 					TimeTillNextShot--;
 
-					// apply knock back
+					// apply recoil
 					if (ammo.BackkickForce > 0)
 					{
 						var forceVector = -direction * ammo.BackkickForce;
-						Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE, forceVector, Block.GetPosition(), Vector3.Zero);
+						Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, Block.GetPosition(), Vector3.Zero);
 					}
 
 					// create sound
@@ -247,7 +244,7 @@ namespace WeaponsOverhaul
 					//MakeSecondaryShotSound();
 
 					// create muzzle flash
-					if (!MyAPIGateway.Utilities.IsDedicated /*Settings.Static.DrawMuzzleFlash*/)
+					if (!MyAPIGateway.Utilities.IsDedicated && Settings.Static.DrawMuzzleFlash)
 					{
 						MatrixD matrix = MatrixD.CreateFromDir(direction);
 						matrix.Translation = origin;
@@ -316,11 +313,10 @@ namespace WeaponsOverhaul
 		public virtual void Animate()
 		{
 
-			if (!MyAPIGateway.Utilities.IsDedicated /*Settings.Static.DrawMuzzleFlash*/)
+			if (!MyAPIGateway.Utilities.IsDedicated && Settings.Static.DrawMuzzleFlash)
 			{
 				if (muzzleFlash != null)
 				{
-
 					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
 					Vector3 direction = muzzleMatrix.Forward;
 					Vector3D origin = muzzleMatrix.Translation;

@@ -9,17 +9,6 @@ using VRage.Game;
 
 namespace WeaponsOverhaul
 {
-
-	[ProtoContract]
-	public class Index
-	{
-		[ProtoMember(1)]
-		public List<string> AmmoDefinitionFiles = new List<string>();
-
-		[ProtoMember(2)]
-		public List<string> WeaponDefinitionFiles = new List<string>();
-	}
-
 	[ProtoContract]
 	public class Settings
 	{
@@ -28,11 +17,15 @@ namespace WeaponsOverhaul
 		public static Settings Static = new Settings();
 		public static bool Initialized { get; private set; } = false;
 
-		private const string IndexFilename = "Index";
-		private const string AmmoFilename = "AmmoDefinitionExample";
-		private const string WeaponFilename = "WeaponDefinitionExample";
+		private const string SettingsFilename = "Setting.cfg";
 
 		[ProtoMember(1)]
+		public int Version;
+
+		[ProtoMember(2)]
+		public bool WriteDefaultDefinitionsToFile;
+
+		[ProtoMember(10)]
 		public bool DrawMuzzleFlash;
 
 		[ProtoMember(20)]
@@ -53,15 +46,22 @@ namespace WeaponsOverhaul
 		[XmlIgnore]
 		public static Dictionary<string, WeaponDefinition> WeaponDefinitionLookup { get; private set; } = new Dictionary<string, WeaponDefinition>();
 
+		// default values
+		public Settings()
+		{
+			Version = 1;
+			WriteDefaultDefinitionsToFile = true;
+
+			DrawMuzzleFlash = true;
+		}
+
 		/// <summary>
 		/// From server to client only
 		/// This function is called when clients make a pull request
 		/// </summary>
-		/// <param name="s"></param>
 		public static void SetUserDefinitions(Settings s)
 		{
-			Static.AmmoDefinitions = s.AmmoDefinitions;
-			Static.WeaponDefinitions = s.WeaponDefinitions;
+			Static = s;
 			BuildLookupDictionaries();
 		}
 
@@ -70,6 +70,29 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public static void Load()
 		{
+			if (FileExistsInWorldStorage(SettingsFilename, typeof(Settings)))
+			{
+				try
+				{
+					TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(SettingsFilename, typeof(Settings));
+					Settings s = MyAPIGateway.Utilities.SerializeFromXML<Settings>(r.ReadToEnd());
+					r.Close();
+
+					Static = s;
+					Tools.Info($"General settings loaded");
+				}
+				catch
+				{
+					Tools.Error($"Could not load settings from file \"{SettingsFilename}\". File is corrupted. Using Defaults");
+					Static = new Settings();
+				}
+				
+			}
+			else
+			{
+				WriteDefaultSettings();
+			}
+
 			LoadKeenDefinitions();
 			LoadUserDefinitions();
 			BuildLookupDictionaries();
@@ -81,7 +104,7 @@ namespace WeaponsOverhaul
 		/// add the new definitions, first keens then user definitions replace
 		/// more than definition with the same subtypeid will be replaced with the lates
 		/// </summary>
-		private static void BuildLookupDictionaries() 
+		private static void BuildLookupDictionaries()
 		{
 			AmmoDefinitionLookup.Clear();
 			WeaponDefinitionLookup.Clear();
@@ -134,16 +157,24 @@ namespace WeaponsOverhaul
 				}
 			}
 
-			if (Tools.DebugMode)
-			{
-				Tools.Debug($"Finished Loading Weapons");
-				foreach (var thing in WeaponDefinitionLookup)
-				{
-					Tools.Debug(thing.Value.ToString());
-				}
-			}
-
 			OnSettingsUpdated?.Invoke();
+		}
+
+		/// <summary>
+		/// keens function is bugged and looks at local storage. this is a work around.
+		/// </summary>
+		private static bool FileExistsInWorldStorage(string filename, Type type)
+		{
+			try
+			{
+				TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(filename, type);
+				r.Close();
+				return true;
+			}
+			catch 
+			{
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -151,115 +182,53 @@ namespace WeaponsOverhaul
 		/// </summary>
 		private static void LoadUserDefinitions() 
 		{
-			Tools.Debug($"Loading User Definitions");
-			Index FileIndex = null;
-			try
-			{
-				TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(IndexFilename, typeof(Index));
-				FileIndex = MyAPIGateway.Utilities.SerializeFromXML<Index>(r.ReadToEnd());
-
-			}
-			catch (FileNotFoundException fnfe)
-			{
-				Tools.Info($"The File Index did not exist. Loading defaults");
-				FileIndex = new Index() {
-					AmmoDefinitionFiles = new List<string> { AmmoFilename },
-					WeaponDefinitionFiles = new List<string> { WeaponFilename },
-				};
-
-				TextWriter w;
-				w = MyAPIGateway.Utilities.WriteFileInWorldStorage(IndexFilename, typeof(AmmoDefinition));
-				w.Write(MyAPIGateway.Utilities.SerializeToXML(FileIndex));
-				w.Close();
-
-				try
+			Type ammoType = typeof(AmmoDefinition);
+			foreach (AmmoDefinition def in KeenAmmoDefinitions)
+			{ 
+				if (FileExistsInWorldStorage(def.SubtypeId, ammoType))
 				{
-					w = MyAPIGateway.Utilities.WriteFileInWorldStorage(AmmoFilename, typeof(AmmoDefinition));
-					w.Write(MyAPIGateway.Utilities.SerializeToXML(new AmmoDefinition {
-						Enabled = false,
-						SubtypeId = AmmoFilename,
-						DesiredSpeed = 400,
-						SpeedVariance = 0,
-						MaxTrajectory = 1000,
-						BackkickForce = 50,
-						ProjectileTrailScale = 1.1f,
-						ProjectileHitImpulse = 5,
-						ProjectileMassDamage = 150,
-						ProjectileHealthDamage = 33,
-						ProjectileHeadShotDamage = 0,
-					}));
-					w.Close();
-
-					w = MyAPIGateway.Utilities.WriteFileInWorldStorage(WeaponFilename, typeof(WeaponDefinition));
-					w.Write(MyAPIGateway.Utilities.SerializeToXML(new WeaponDefinition {
-						Enabled = false,
-						SubtypeId = WeaponFilename,
-						NoAmmoSound = "WepPlayRifleNoAmmo",
-						SecondarySound = "WepShipGatlingRotation",
-						DeviateShotAngle = 0.1f,
-						ReleaseTimeAfterFire = 100,
-						MuzzleFlashLifeSpan = 40,
-						MuzzleFlashSpriteName = "Muzzle_Flash_Large",
-						ReloadTime = 3000,
-						AmmoData = new WeaponAmmoDefinition {
-							ShootSound = "WepGatlingTurretShot",
-							ShotsInBurst = 1,
-							RateOfFire = 600,
-						},
-					}));
-					w.Close();
-				}
-				catch (Exception ex)
-				{
-					Tools.Error($"Failed to create sample definitions:\n{ex}");
-				}
-			}
-			catch (Exception e)
-			{
-				Tools.Info($"Failed to read the index file. the file is not formatted correctly:\n{e}");
-			}
-
-			if (FileIndex == null)
-				return;
-
-			foreach (string filename in FileIndex.AmmoDefinitionFiles)
-			{
-				try
-				{
-					TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(filename, typeof(AmmoDefinition));
-					AmmoDefinition a = MyAPIGateway.Utilities.SerializeFromXML<AmmoDefinition>(r.ReadToEnd());
-
-					Tools.Debug($"{((a.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user ammo definition {a.SubtypeId}");
-
-					if (a.Enabled)
+					try
 					{
-						Static.AmmoDefinitions.Add(a);
+						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(def.SubtypeId, ammoType);
+						AmmoDefinition a = MyAPIGateway.Utilities.SerializeFromXML<AmmoDefinition>(r.ReadToEnd());
+						r.Close();
+
+						Tools.Debug($"{((a.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user ammo definition {a.SubtypeId}");
+
+						if (a.Enabled)
+						{
+							Static.AmmoDefinitions.Add(a);
+						}
+					}
+					catch
+					{
+						Tools.Error($"Failed to load file {def.SubtypeId}");
 					}
 				}
-				catch (Exception e)
-				{
-					Tools.Error($"Failed to load Ammo Definition from file. The filename could be misspelled in the Index file. The file could be missing or the file could be incorrectly formatted.\n{e}");
-				}
 			}
 
-			foreach (string filename in FileIndex.WeaponDefinitionFiles)
+			Type weaponType = typeof(WeaponDefinition);
+			foreach (WeaponDefinition def in KeenWeaponDefinitions)
 			{
-				try
+				if (FileExistsInWorldStorage(def.SubtypeId, weaponType))
 				{
-					TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(filename, typeof(WeaponDefinition));
-					WeaponDefinition w = MyAPIGateway.Utilities.SerializeFromXML<WeaponDefinition>(r.ReadToEnd());
-
-					Tools.Debug($"{((w.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user weapon definition {w.SubtypeId}");
-
-					if (w.Enabled)
+					try
 					{
-						Tools.Debug($"Load DeviateShotAngle: {w.DeviateShotAngle}");
-						Static.WeaponDefinitions.Add(w);
+						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(def.SubtypeId, weaponType);
+						WeaponDefinition w = MyAPIGateway.Utilities.SerializeFromXML<WeaponDefinition>(r.ReadToEnd());
+						r.Close();
+
+						Tools.Debug($"{((w.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user weapon definition {w.SubtypeId}");
+
+						if (w.Enabled)
+						{
+							Static.WeaponDefinitions.Add(w);
+						}
 					}
-				}
-				catch (Exception e)
-				{
-					Tools.Error($"Failed to load Ammo Definition from file. The filename could be misspelled in the Index file. The file could be missing or the file could be incorrectly formatted.\n{e}");
+					catch
+					{
+						Tools.Error($"Failed to load file {def.SubtypeId}");
+					}
 				}
 			}
 		}
@@ -270,6 +239,8 @@ namespace WeaponsOverhaul
 		private static void LoadKeenDefinitions()
 		{
 			Tools.Debug($"Loading Keen Definitions");
+			Type ammoType = typeof(AmmoDefinition);
+			Type weaponType = typeof(WeaponDefinition);
 			foreach (MyDefinitionBase def in MyDefinitionManager.Static.GetAllDefinitions())
 			{
 				try
@@ -277,18 +248,43 @@ namespace WeaponsOverhaul
 					if (def is MyAmmoMagazineDefinition)
 					{
 						MyAmmoDefinition ammo = MyDefinitionManager.Static.GetAmmoDefinition((def as MyAmmoMagazineDefinition).AmmoDefinitionId);
-						if (ammo.IsExplosive)
-							continue;
 
-						Tools.Debug($"Loading keen ammo definition: {ammo.Id.SubtypeId}");
+						if (ammo.IsExplosive)
+						{
+							Tools.Debug($"Skipping keen ammo definition: {ammo.Id}");
+							continue;
+						}
+						else
+						{
+							Tools.Debug($"Loading keen ammo definition: {ammo.Id}");
+						}
 
 						AmmoDefinition a = AmmoDefinition.CreateFromKeenDefinition(ammo as MyProjectileAmmoDefinition);
 						KeenAmmoDefinitions.Add(a);
+
+						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(a.SubtypeId, ammoType))
+						{
+							Tools.Debug($"Saving defintion to file");
+							try
+							{
+								AmmoDefinition ca = a.Clone();
+								ca.Enabled = false;
+
+								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(ca.SubtypeId, ammoType);
+								writer.Write(MyAPIGateway.Utilities.SerializeToXML(ca));
+								writer.Close();
+
+							}
+							catch
+							{
+								Tools.Error($"Unable to write to file {a.SubtypeId}");
+							}
+						}
+
 					}
 					else if (def is MyWeaponBlockDefinition)
 					{
 						MyWeaponBlockDefinition block = def as MyWeaponBlockDefinition;
-						Tools.Debug($"Loading keen weapon definition: {block.WeaponDefinitionId.SubtypeId}");
 						MyWeaponDefinition weaponDef = MyDefinitionManager.Static.GetWeaponDefinition(block.WeaponDefinitionId);
 
 						if (weaponDef.HasMissileAmmoDefined)
@@ -315,6 +311,25 @@ namespace WeaponsOverhaul
 
 						WeaponDefinition w = WeaponDefinition.CreateFromKeenDefinition(weaponDef);
 						KeenWeaponDefinitions.Add(w);
+
+						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(w.SubtypeId, weaponType))
+						{
+							Tools.Debug($"Saving defintion to file");
+							try
+							{
+								WeaponDefinition cw = w.Clone();
+								cw.Enabled = false;
+
+								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(w.SubtypeId, weaponType);
+								writer.Write(MyAPIGateway.Utilities.SerializeToXML(cw));
+								writer.Close();
+
+							}
+							catch
+							{
+								Tools.Error($"Unable to write to file {w.SubtypeId}");
+							}
+						}
 					}
 				}
 				catch (Exception e)
@@ -323,5 +338,29 @@ namespace WeaponsOverhaul
 				}
 			}
 		}
+
+		/// <summary>
+		/// Writes default settings to file
+		/// </summary>
+		private static void WriteDefaultSettings()
+		{
+			Tools.Info($"Saving default settings");
+			try
+			{
+				Settings s = Static;
+				s.AmmoDefinitions = new List<AmmoDefinition>();
+				s.WeaponDefinitions = new List<WeaponDefinition>();
+
+				TextWriter w = MyAPIGateway.Utilities.WriteFileInWorldStorage(SettingsFilename, typeof(Settings));
+				w.Write(MyAPIGateway.Utilities.SerializeToXML(s));
+				w.Close();
+
+			}
+			catch
+			{
+				Tools.Error("Failed to save default Settings");
+			}
+		}
+
 	}
 }
