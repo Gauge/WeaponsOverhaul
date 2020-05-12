@@ -69,6 +69,8 @@ namespace WeaponsOverhaul
 
 			Weapon.Start();
 
+			TerminalIntitalize();
+
 			if (Settings.Initialized)
 				SystemRestart();
 		}
@@ -76,9 +78,6 @@ namespace WeaponsOverhaul
 		public override void UpdateBeforeSimulation()
 		{
 			base.UpdateBeforeSimulation();
-
-			TerminalIntitalize();
-
 			Weapon.Update();
 			Weapon.Spawn();
 			

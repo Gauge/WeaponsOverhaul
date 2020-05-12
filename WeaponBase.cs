@@ -40,6 +40,9 @@ namespace WeaponsOverhaul
 
 		protected MyParticleEffect muzzleFlash;
 
+		protected MyEntity3DSoundEmitter PrimaryEmitter;
+		protected MyEntity3DSoundEmitter SecondaryEmitter;
+
 		/// <summary>
 		/// Called when game logic is added to container
 		/// </summary>
@@ -58,7 +61,34 @@ namespace WeaponsOverhaul
 			CurrentReloadTime.ValueChangedByNetwork += CurrentReloadTimeUpdate;
 			DeviationIndex = new NetSync<int>(ControlLayer, TransferType.ServerToClient, Tools.Random.Next(0, 128));
 
+			PrimaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
+			SecondaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
+			InitializeSound();
+
 			Initialized = true;
+		}
+
+		private void InitializeSound()
+		{
+			if (!string.IsNullOrWhiteSpace(NoAmmoSound))
+			{
+				NoAmmoSoundPair = new MySoundPair(NoAmmoSound);
+			}
+
+			if (!string.IsNullOrWhiteSpace(SecondarySound))
+			{
+				SecondarySoundPair = new MySoundPair(SecondarySound);
+			}
+
+			if (!string.IsNullOrWhiteSpace(ReloadSound))
+			{
+				ReloadSoundPair = new MySoundPair(ReloadSound);
+			}
+
+			if (AmmoData != null && !string.IsNullOrWhiteSpace(AmmoData.ShootSound))
+			{
+				AmmoData.ShootSoundPair = new MySoundPair(AmmoData.ShootSound);
+			}
 		}
 
 		/// <summary>
@@ -86,6 +116,7 @@ namespace WeaponsOverhaul
 			CurrentReleaseTime = 0;
 			TimeTillNextShot = 1d;
 			CurrentIdleReloadTime = 0;
+			InitializeSound();
 		}
 
 		/// <summary>
@@ -199,7 +230,7 @@ namespace WeaponsOverhaul
 
 					// spawn projectile
 					Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
-					Tools.Debug($"{Entity.EntityId} Deviation Index: {DeviationIndex.Value}");
+					//Tools.Debug($"{Entity.EntityId} Deviation Index: {DeviationIndex.Value}");
 					Core.SpawnProjectile(bullet);
 					gun.GunBase.ConsumeAmmo();
 					TimeTillNextShot--;
@@ -212,7 +243,7 @@ namespace WeaponsOverhaul
 					}
 
 					// create sound
-					//MakeShootSound();
+					StartShootSound();
 					//MakeSecondaryShotSound();
 
 					// create muzzle flash
@@ -260,6 +291,24 @@ namespace WeaponsOverhaul
 			}
 		}
 
+		public void StartShootSound()
+		{
+			if (AmmoData.ShootSoundPair == null || PrimaryEmitter == null)
+				return;
+
+			if (PrimaryEmitter.IsPlaying)
+			{
+				if (!PrimaryEmitter.Loop)
+				{
+					PrimaryEmitter.PlaySound(AmmoData.ShootSoundPair, false, false, false);
+				}
+			}
+			else
+			{
+				PrimaryEmitter.PlaySound(AmmoData.ShootSoundPair, true, false, false);
+			}
+		}
+
 		/// <summary>
 		/// Third call in the update loop
 		/// Handles animating small gatling gun barrel animations
@@ -293,6 +342,7 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Close()
 		{
+			muzzleFlash?.Stop();
 			CurrentReloadTime.ValueChangedByNetwork -= CurrentReloadTimeUpdate;
 		}
 

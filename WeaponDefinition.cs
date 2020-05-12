@@ -56,12 +56,12 @@ namespace WeaponsOverhaul
 		[ProtoMember(90)]
 		public string SecondarySound;
 
-		//[XmlIgnore]
-		//public MySoundPair NoAmmoSoundPair;
-		//[XmlIgnore]
-		//public MySoundPair ReloadSoundPair;
-		//[XmlIgnore]
-		//public MySoundPair SecondarySoundPair;
+		[XmlIgnore]
+		public MySoundPair NoAmmoSoundPair;
+		[XmlIgnore]
+		public MySoundPair ReloadSoundPair;
+		[XmlIgnore]
+		public MySoundPair SecondarySoundPair;
 
 		public WeaponDefinition Clone()
 		{
@@ -78,9 +78,9 @@ namespace WeaponsOverhaul
 				NoAmmoSound = NoAmmoSound,
 				ReloadSound = ReloadSound,
 				SecondarySound = SecondarySound,
-				//NoAmmoSoundPair = NoAmmoSoundPair,
-				//ReloadSoundPair = ReloadSoundPair,
-				//SecondarySoundPair = SecondarySoundPair,
+				NoAmmoSoundPair = NoAmmoSoundPair,
+				ReloadSoundPair = ReloadSoundPair,
+				SecondarySoundPair = SecondarySoundPair,
 			};
 		}
 
@@ -98,9 +98,9 @@ namespace WeaponsOverhaul
 			NoAmmoSound = w.NoAmmoSound;
 			ReloadSound = w.ReloadSound;
 			SecondarySound = w.SecondarySound;
-			//NoAmmoSoundPair = w.NoAmmoSoundPair;
-			//ReloadSoundPair = w.ReloadSoundPair;
-			//SecondarySoundPair = w.SecondarySoundPair;
+			NoAmmoSoundPair = w.NoAmmoSoundPair;
+			ReloadSoundPair = w.ReloadSoundPair;
+			SecondarySoundPair = w.SecondarySoundPair;
 		}
 
 		public static WeaponDefinition CreateFromKeenDefinition(MyWeaponDefinition w)
@@ -117,9 +117,9 @@ namespace WeaponsOverhaul
 				NoAmmoSound = w.NoAmmoSound.SoundId.ToString(),
 				ReloadSound = w.ReloadSound.SoundId.ToString(),
 				SecondarySound = w.SecondarySound.SoundId.ToString(),
-				//NoAmmoSoundPair = w.NoAmmoSound,
-				//ReloadSoundPair = w.ReloadSound,
-				//SecondarySoundPair = w.SecondarySound,
+				NoAmmoSoundPair = w.NoAmmoSound,
+				ReloadSoundPair = w.ReloadSound,
+				SecondarySoundPair = w.SecondarySound,
 				AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
 			};
 		}
@@ -143,8 +143,8 @@ namespace WeaponsOverhaul
 		[ProtoMember(30)]
 		public string ShootSound;
 
-		//[XmlIgnore]
-		//public MySoundPair ShootSoundPair;
+		[XmlIgnore]
+		public MySoundPair ShootSoundPair;
 
 		public WeaponAmmoDefinition Clone()
 		{
@@ -152,7 +152,7 @@ namespace WeaponsOverhaul
 				RateOfFire = RateOfFire,
 				ShotsInBurst = ShotsInBurst,
 				ShootSound = ShootSound,
-				//ShootSoundPair = ShootSoundPair
+				ShootSoundPair = ShootSoundPair
 			};
 		}
 
@@ -163,7 +163,7 @@ namespace WeaponsOverhaul
 				ShotsInBurst = a.ShotsInBurst,
 
 				ShootSound = a.ShootSound.SoundId.ToString(),
-				//ShootSoundPair = a.ShootSound,
+				ShootSoundPair = a.ShootSound,
 			};
 		}
 	}
