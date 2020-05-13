@@ -92,7 +92,7 @@ namespace WeaponsOverhaul
 
             MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
 
-                ProjectileMovement.Update(p);
+                MovementBase.Update(p);
 
                 if (p.HasExpired)
                 {

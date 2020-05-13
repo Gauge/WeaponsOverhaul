@@ -10,7 +10,7 @@ namespace WeaponsOverhaul
     //    public abstract void Update(ref Projectile p);
     //}
 
-    public class ProjectileMovement
+    public class MovementBase
     {
         public static void Update(Projectile p)
         {
