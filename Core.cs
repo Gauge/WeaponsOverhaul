@@ -22,17 +22,20 @@ namespace WeaponsOverhaul
         public const string ModName = "WeaponsOverhaul";
         public const string ModKeyword = "/weap";
 
-        public NetSync<Settings> NetSettings;
+        private NetSync<Settings> NetSettings;
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            NetworkAPI.LogNetworkTraffic = false;
+            NetworkAPI.LogNetworkTraffic = true;
             Tools.DebugMode = true;
 
             if (!NetworkAPI.IsInitialized)
             {
                 NetworkAPI.Init(ModId, ModName, ModKeyword);
             }
+
+            NetSettings = new NetSync<Settings>(this, TransferType.ServerToClient, Settings.Static);
+            NetSettings.ValueChangedByNetwork += UpdateSettings;
 
             if (!MyAPIGateway.Session.IsServer)
             {
@@ -45,19 +48,17 @@ namespace WeaponsOverhaul
                 Network.RegisterChatCommand("load", (args) => {
                     Tools.Debug("Chat Command");
                     Settings.Load();
+                    NetSettings.Value = Settings.Static;
                 });
 
             }
 
-
             Settings.Load();
-
-            NetSettings = new NetSync<Settings>(this, TransferType.ServerToClient, Settings.Static);
-            NetSettings.ValueChangedByNetwork += UpdateSettings;
         }
 
         public void UpdateSettings(Settings o, Settings n, ulong steamId)
         {
+            Tools.Debug($"Recived update from server");
             Settings.SetUserDefinitions(n);
         }
 
@@ -146,6 +147,7 @@ namespace WeaponsOverhaul
             if (IsAllowedSpecialOperations(steamId))
             {
                 Settings.Load();
+                NetSettings.Value = Settings.Static;
             }
         }
 

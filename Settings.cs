@@ -34,16 +34,11 @@ namespace WeaponsOverhaul
 		[ProtoMember(30)]
 		private List<WeaponDefinition> WeaponDefinitions = new List<WeaponDefinition>();
 
-		[XmlIgnore]
-		private static List<AmmoDefinition> KeenAmmoDefinitions = new List<AmmoDefinition>();
 
-		[XmlIgnore]
+		private static List<AmmoDefinition> KeenAmmoDefinitions = new List<AmmoDefinition>();
 		private static List<WeaponDefinition> KeenWeaponDefinitions = new List<WeaponDefinition>();
 
-		[XmlIgnore]
 		public static Dictionary<string, AmmoDefinition> AmmoDefinitionLookup { get; private set; } = new Dictionary<string, AmmoDefinition>();
-
-		[XmlIgnore]
 		public static Dictionary<string, WeaponDefinition> WeaponDefinitionLookup { get; private set; } = new Dictionary<string, WeaponDefinition>();
 
 		// default values
@@ -120,6 +115,7 @@ namespace WeaponsOverhaul
 				}
 			}
 
+			Tools.Debug($"Loading {Static.AmmoDefinitions.Count} user definitions into lookup");
 			foreach (AmmoDefinition a in Static.AmmoDefinitions)
 			{
 				if (AmmoDefinitionLookup.ContainsKey(a.SubtypeId))
@@ -144,6 +140,7 @@ namespace WeaponsOverhaul
 				}
 			}
 
+			Tools.Debug($"Loading {Static.WeaponDefinitions.Count} user definitions into lookup");
 			foreach (WeaponDefinition w in Static.WeaponDefinitions)
 			{
 				if (WeaponDefinitionLookup.ContainsKey(w.SubtypeId))
