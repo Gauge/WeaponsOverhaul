@@ -1,4 +1,5 @@
-﻿using VRage.Game;
+﻿using System;
+using VRage.Game;
 using VRage.Utils;
 using VRageMath;
 
@@ -15,7 +16,7 @@ namespace WeaponsOverhaul
 
 		public double DistanceTraveled;
 
-		public int LifeTime;
+		public int Lifetime;
 
 		public Vector3D Origin;
 
@@ -28,6 +29,10 @@ namespace WeaponsOverhaul
 		public Vector3D Position;
 
 		public Vector3D LastPosition;
+
+		private bool DrawFullTracer;
+
+		private MyStringId TrailMaterial;
 
 		public Projectile(long shooterId, Vector3D origin, Vector3D direction, Vector3D initialVelocity, string ammoDefinitionId)
 		{
@@ -51,16 +56,37 @@ namespace WeaponsOverhaul
 
 			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
-			float length = 0.6f * 40f * ammo.ProjectileTrailScale;
-			Vector3D start = Position - (Direction * length);
+			if (Tools.Random.NextDouble() < ammo.ProjectileTrailProbability)
+			{
+				float length = 0.6f * 40f * ammo.ProjectileTrailScale;
+				Vector3D start;
+				if (DrawFullTracer)
+				{
+					//length = 0.6f * 40f * ammo.ProjectileTrailScale;
+					start = Position - (Direction * length);
+				}
+				else
+				{
+					float distance = (float)Vector3D.Distance(Origin, Position);
+					if (length <= distance)
+					{
+						DrawFullTracer = true;
+					}
+					start = Origin;
+					length = distance;
+				} 
 
-			float scaleFactor = MyParticlesManager.Paused ? 1f : MyUtils.GetRandomFloat(1f, 2f);
-			float thickness = (MyParticlesManager.Paused ? 0.2f : MyUtils.GetRandomFloat(0.2f, 0.3f)) * ammo.ProjectileTrailScale;
-			thickness *= MathHelper.Lerp(0.2f, 0.8f, 1f);
+				float scaleFactor = MyParticlesManager.Paused ? 1f : MyUtils.GetRandomFloat(1f, 2f);
+				float thickness = (MyParticlesManager.Paused ? 0.2f : MyUtils.GetRandomFloat(0.2f, 0.3f)) * ammo.ProjectileTrailScale;
+				thickness *= MathHelper.Lerp(0.2f, 0.8f, 1f);
 
-			MyStringId trailMaterial = string.IsNullOrWhiteSpace(ammo.ProjectileTrailMaterial) ? MyStringId.GetOrCompute("ProjectileTrailLine") : MyStringId.GetOrCompute(ammo.ProjectileTrailMaterial);
+				if (TrailMaterial == null)
+				{ 
+					TrailMaterial = string.IsNullOrWhiteSpace(ammo.ProjectileTrailMaterial) ? MyStringId.GetOrCompute("ProjectileTrailLine") : MyStringId.GetOrCompute(ammo.ProjectileTrailMaterial)
+				}
 
-			MyTransparentGeometry.AddLineBillboard(trailMaterial, new Vector4(ammo.ProjectileTrailColor * scaleFactor * 10f, 1f), start, Direction, length, thickness);
+				MyTransparentGeometry.AddLineBillboard(trailMaterial, new Vector4(ammo.ProjectileTrailColor * scaleFactor * 10f, 1f), start, Direction, length, thickness);
+			}
 		}
 
 	}

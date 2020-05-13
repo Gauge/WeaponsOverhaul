@@ -51,7 +51,6 @@ namespace WeaponsOverhaul
 		{
 			Version = 1;
 			WriteDefaultDefinitionsToFile = true;
-
 			DrawMuzzleFlash = true;
 		}
 

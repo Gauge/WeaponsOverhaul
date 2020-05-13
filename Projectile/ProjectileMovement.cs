@@ -22,8 +22,8 @@ namespace WeaponsOverhaul
             p.Position += travel;
             p.DistanceTraveled += travel.LengthSquared();
 
-            p.LifeTime++;
-            p.HasExpired = p.DistanceTraveled * p.LifeTime > ammo.MaxTrajectory * ammo.MaxTrajectory;
+            p.Lifetime++;
+            p.HasExpired = p.DistanceTraveled * p.Lifetime > ammo.MaxTrajectory * ammo.MaxTrajectory;
         }
     }
 

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRageMath;
 
 namespace WeaponsOverhaul
 {
@@ -21,21 +20,35 @@ namespace WeaponsOverhaul
 
         public const ushort ModId = 12144;
         public const string ModName = "WeaponsOverhaul";
-        public const string ModKeyword = "wo";
-
-
+        public const string ModKeyword = "/weap";
 
         public NetSync<Settings> NetSettings;
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            NetworkAPI.LogNetworkTraffic = true;
-            Tools.DebugMode = true;
+            NetworkAPI.LogNetworkTraffic = false;
+            Tools.DebugMode = false;
 
             if (!NetworkAPI.IsInitialized)
             {
                 NetworkAPI.Init(ModId, ModName, ModKeyword);
             }
+
+            if (!MyAPIGateway.Session.IsServer)
+            {
+                Network.RegisterChatCommand("load", (args) => Network.SendCommand("load"));
+            }
+            else
+            {
+                Network.RegisterNetworkCommand("load", ServerCallback_Load);
+
+                Network.RegisterChatCommand("load", (args) => {
+                    Tools.Debug("Chat Command");
+                    Settings.Load();
+                });
+
+            }
+
 
             Settings.Load();
 
@@ -119,7 +132,28 @@ namespace WeaponsOverhaul
             }
         }
 
-		#endregion
-	}
+        #endregion
+
+
+        private void ServerCallback_Load(ulong steamId, string commandString, byte[] data, DateTime timestamp)
+        {
+            if (IsAllowedSpecialOperations(steamId))
+            {
+                Settings.Load();
+            }
+        }
+
+        public static bool IsAllowedSpecialOperations(ulong steamId)
+        {
+            if (MyAPIGateway.Multiplayer.IsServer)
+                return true;
+            return IsAllowedSpecialOperations(MyAPIGateway.Session.GetUserPromoteLevel(steamId));
+        }
+
+        public static bool IsAllowedSpecialOperations(MyPromoteLevel level)
+        {
+            return level == MyPromoteLevel.SpaceMaster || level == MyPromoteLevel.Admin || level == MyPromoteLevel.Owner;
+        }
+    }
 }
 
