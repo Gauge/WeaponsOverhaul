@@ -27,7 +27,7 @@ namespace WeaponsOverhaul
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
             NetworkAPI.LogNetworkTraffic = false;
-            Tools.DebugMode = false;
+            Tools.DebugMode = true;
 
             if (!NetworkAPI.IsInitialized)
             {
@@ -77,12 +77,21 @@ namespace WeaponsOverhaul
             }
         }
 
+        public static void ExpireProjectile(Projectile data) 
+        {
+            data.Expired = true;
+            lock (ExpiredProjectiles)
+            {
+                ExpiredProjectiles.Add(data);
+            }
+        }
+
         public override void UpdateBeforeSimulation()
         {
-            if (!MyAPIGateway.Utilities.IsDedicated)
-            {
-                MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
-            }
+            //if (!MyAPIGateway.Utilities.IsDedicated)
+            //{
+            //    MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
+            //}
 
             ActiveProjectiles.ExceptWith(ExpiredProjectiles);
             ExpiredProjectiles.Clear();
@@ -90,46 +99,43 @@ namespace WeaponsOverhaul
             ActiveProjectiles.UnionWith(PendingProjectiles);
             PendingProjectiles.Clear();
 
-            MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
+            MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {      
+                p.Update();
 
-                MovementBase.Update(p);
-
-                if (p.HasExpired)
-                {
-                    lock (ExpiredProjectiles)
-                    {
-                        ExpiredProjectiles.Add(p);
-                    }
-                }
+                //if (p.Expired)
+                //{
+                //    lock (ExpiredProjectiles)
+                //    {
+                //        ExpiredProjectiles.Add(p);
+                //    }
+                //}
             });
 
             DamageDefinition def;
             while (DamageRequests.Count > 0)
             {
                 DamageRequests.TryDequeue(out def);
-
-                if (def.Victim != null)
-                {
-                    def.Victim.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.AttackerId);
-
-                    if (def.ImpulseEntity?.Physics != null && def.ImpulseForce != null && def.ImpulsePosition != null)
-                    {
-                        def.ImpulseEntity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, def.ImpulseForce, def.ImpulsePosition, null);
-                    }
-
-                }
+                def.Victim?.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.ShooterId);
             }
         }
 
         public override void Draw()
         {
+
             foreach (Projectile p in ActiveProjectiles)
             {
-                if (!p.HasExpired)
+                if (!p.Expired)
                 {
                     p.Draw();
                 }
             }
+
+            //MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
+            //    if (!p.HasExpired)
+            //    {
+            //        p.Draw();
+            //    }
+            //});
         }
 
         #endregion

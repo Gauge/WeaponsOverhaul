@@ -7,6 +7,7 @@ using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.Library.Utils;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -59,7 +60,7 @@ namespace WeaponsOverhaul
 			TerminalShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			CurrentReloadTime = new NetSync<float>(ControlLayer, TransferType.ServerToClient, 0);
 			CurrentReloadTime.ValueChangedByNetwork += CurrentReloadTimeUpdate;
-			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)Tools.Random.Next(0, sbyte.MaxValue));
+			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
 
 			PrimaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
 			SecondaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
@@ -232,7 +233,7 @@ namespace WeaponsOverhaul
 					gun.GunBase.ConsumeAmmo();
 					TimeTillNextShot--;
 
-					// apply recoil
+					//apply recoil
 					if (ammo.BackkickForce > 0)
 					{
 						var forceVector = -direction * ammo.BackkickForce;
@@ -325,7 +326,7 @@ namespace WeaponsOverhaul
 					matrix.Translation = origin;
 					muzzleFlash.WorldMatrix = matrix;
 
-					if (muzzleFlash.GetElapsedTime() > MuzzleFlashLifeSpan / 1000f)
+					if (muzzleFlash.GetElapsedTime() > MuzzleFlashLifeSpan * 0.001f)
 					{
 						muzzleFlash.Stop();
 					}
