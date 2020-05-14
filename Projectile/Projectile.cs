@@ -26,8 +26,6 @@ namespace WeaponsOverhaul
 
 		public Vector3D Position;
 
-		public Vector3D LastPosition;
-
 		private bool DrawFullTracer;
 
 		public Projectile(long shooterId, Vector3D origin, Vector3D direction, Vector3D initialVelocity, string ammoDefinitionId)
@@ -40,7 +38,6 @@ namespace WeaponsOverhaul
 			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
 			Position = Origin;
-			LastPosition = Origin;
 			Velocity = initialVelocity + (direction * ammo.DesiredSpeed);
 
 		}
@@ -52,7 +49,6 @@ namespace WeaponsOverhaul
 
 			Check();
 
-			LastPosition = Position;
 			Position += Velocity * Tools.Tick;
 			if ((Origin - Position).LengthSquared() > ammo.MaxTrajectory * ammo.MaxTrajectory)
 			{
@@ -63,13 +59,13 @@ namespace WeaponsOverhaul
 		private void Check() 
 		{
 			if (Expired) return;
-
 			Vector3D End = Position + Velocity * Tools.Tick;
 
 			IHitInfo hit;
 			MyAPIGateway.Physics.CastRay(Position, End, out hit);
 			if (hit != null)
 			{
+				Expired = true;
 				AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
 				//apply recoil
@@ -80,13 +76,16 @@ namespace WeaponsOverhaul
 				}
 
 				if (!MyAPIGateway.Session.IsServer)
+				{
+					Core.ExpireProjectile(this);
 					return;
+				}
 
 				if (hit.HitEntity is IMyDestroyableObject)
 				{
 					Core.DamageRequests.Enqueue(new DamageDefinition {
 						Victim = (hit.HitEntity as IMyDestroyableObject),
-						Damage = ammo.ProjectileHealthDamage,
+						Damage = ammo.ProjectileMassDamage,
 						DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
 						ShooterId = ShooterId
 					});
@@ -94,7 +93,6 @@ namespace WeaponsOverhaul
 				else if (hit.HitEntity is IMyCubeGrid)
 				{
 					IMyCubeGrid grid = hit.HitEntity as IMyCubeGrid;
-
 					Vector3I? hitPos = grid.RayCastBlocks(hit.Position, hit.Position + Direction);
 					if (hitPos.HasValue)
 					{
@@ -111,9 +109,7 @@ namespace WeaponsOverhaul
 
 				Core.ExpireProjectile(this);
 			}
-
 		}
-
 
 		public void Draw()
 		{

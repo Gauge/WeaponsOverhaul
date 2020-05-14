@@ -26,8 +26,8 @@ namespace WeaponsOverhaul
 
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
-            NetworkAPI.LogNetworkTraffic = true;
-            Tools.DebugMode = true;
+            NetworkAPI.LogNetworkTraffic = false;
+            Tools.DebugMode = false;
 
             if (!NetworkAPI.IsInitialized)
             {
@@ -50,7 +50,6 @@ namespace WeaponsOverhaul
                     Settings.Load();
                     NetSettings.Value = Settings.Static;
                 });
-
             }
 
             Settings.Load();
@@ -81,18 +80,15 @@ namespace WeaponsOverhaul
         public static void ExpireProjectile(Projectile data) 
         {
             data.Expired = true;
-            lock (ExpiredProjectiles)
-            {
-                ExpiredProjectiles.Add(data);
-            }
+            ExpiredProjectiles.Add(data);
         }
 
         public override void UpdateBeforeSimulation()
         {
-            //if (!MyAPIGateway.Utilities.IsDedicated)
-            //{
-            //    MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
-            //}
+            if (!MyAPIGateway.Utilities.IsDedicated)
+            {
+                MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
+            }
 
             ActiveProjectiles.ExceptWith(ExpiredProjectiles);
             ExpiredProjectiles.Clear();
@@ -102,14 +98,6 @@ namespace WeaponsOverhaul
 
             MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {      
                 p.Update();
-
-                //if (p.Expired)
-                //{
-                //    lock (ExpiredProjectiles)
-                //    {
-                //        ExpiredProjectiles.Add(p);
-                //    }
-                //}
             });
 
             DamageDefinition def;
@@ -122,7 +110,6 @@ namespace WeaponsOverhaul
 
         public override void Draw()
         {
-
             foreach (Projectile p in ActiveProjectiles)
             {
                 if (!p.Expired)
@@ -130,13 +117,6 @@ namespace WeaponsOverhaul
                     p.Draw();
                 }
             }
-
-            //MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
-            //    if (!p.HasExpired)
-            //    {
-            //        p.Draw();
-            //    }
-            //});
         }
 
         #endregion
