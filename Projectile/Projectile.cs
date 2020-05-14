@@ -71,7 +71,7 @@ namespace WeaponsOverhaul
 				//apply recoil
 				if (ammo.BackkickForce > 0)
 				{
-					Vector3 forceVector = hit.Normal * ammo.BackkickForce;
+					Vector3 forceVector = hit.Normal * ammo.ProjectileHitImpulse;
 					hit.HitEntity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, hit.Position, Vector3.Zero);
 				}
 
@@ -87,7 +87,8 @@ namespace WeaponsOverhaul
 						Victim = (hit.HitEntity as IMyDestroyableObject),
 						Damage = ammo.ProjectileMassDamage,
 						DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
-						ShooterId = ShooterId
+						ShooterId = ShooterId,
+						//ForceVector = hit.Normal * ammo.ProjectileHitImpulse
 					});
 				}
 				else if (hit.HitEntity is IMyCubeGrid)
@@ -102,7 +103,8 @@ namespace WeaponsOverhaul
 							Victim = block,
 							Damage = ammo.ProjectileMassDamage,
 							DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
-							ShooterId = ShooterId
+							ShooterId = ShooterId,
+							//ForceVector =  hit.Normal * ammo.ProjectileHitImpulse
 						});
 					}
 				}

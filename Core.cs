@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
+using VRageMath;
 
 namespace WeaponsOverhaul
 {
@@ -105,6 +107,7 @@ namespace WeaponsOverhaul
             {
                 DamageRequests.TryDequeue(out def);
                 def.Victim?.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.ShooterId);
+                //(def.Victim as IMyEntity)?.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, def.ForceVector, (def.Victim as IMyEntity).GetPosition(), Vector3.Zero);
             }
         }
 

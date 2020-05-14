@@ -1,5 +1,6 @@
 ﻿using VRage.Game.ModAPI.Interfaces;
 using VRage.Utils;
+using VRageMath;
 
 namespace WeaponsOverhaul
 {
@@ -12,5 +13,7 @@ namespace WeaponsOverhaul
         public float Damage;
 
         public MyStringHash DamageType;
+
+        //public Vector3 ForceVector;
     }
 }
