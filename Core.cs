@@ -11,7 +11,7 @@ using VRageMath;
 
 namespace WeaponsOverhaul
 {
-    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation | MyUpdateOrder.BeforeSimulation)]
+    [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class Core : MyNetworkSessionComponent
     {
 		#region setup
@@ -48,7 +48,6 @@ namespace WeaponsOverhaul
                 Network.RegisterNetworkCommand("load", ServerCallback_Load);
 
                 Network.RegisterChatCommand("load", (args) => {
-                    Tools.Debug("Chat Command");
                     Settings.Load();
                     NetSettings.Value = Settings.Static;
                 });
@@ -59,7 +58,6 @@ namespace WeaponsOverhaul
 
         public void UpdateSettings(Settings o, Settings n, ulong steamId)
         {
-            Tools.Debug($"Recived update from server");
             Settings.SetUserDefinitions(n);
         }
 
@@ -107,7 +105,6 @@ namespace WeaponsOverhaul
             {
                 DamageRequests.TryDequeue(out def);
                 def.Victim?.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.ShooterId);
-                //(def.Victim as IMyEntity)?.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, def.ForceVector, (def.Victim as IMyEntity).GetPosition(), Vector3.Zero);
             }
         }
 
@@ -115,10 +112,7 @@ namespace WeaponsOverhaul
         {
             foreach (Projectile p in ActiveProjectiles)
             {
-                if (!p.Expired)
-                {
-                    p.Draw();
-                }
+                p.Draw();
             }
         }
 

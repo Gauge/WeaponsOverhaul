@@ -4,7 +4,6 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Xml.Serialization;
 using VRage.Game;
 
 namespace WeaponsOverhaul
@@ -115,7 +114,6 @@ namespace WeaponsOverhaul
 				}
 			}
 
-			Tools.Debug($"Loading {Static.AmmoDefinitions.Count} user definitions into lookup");
 			foreach (AmmoDefinition a in Static.AmmoDefinitions)
 			{
 				if (AmmoDefinitionLookup.ContainsKey(a.SubtypeId))
@@ -140,7 +138,6 @@ namespace WeaponsOverhaul
 				}
 			}
 
-			Tools.Debug($"Loading {Static.WeaponDefinitions.Count} user definitions into lookup");
 			foreach (WeaponDefinition w in Static.WeaponDefinitions)
 			{
 				if (WeaponDefinitionLookup.ContainsKey(w.SubtypeId))
@@ -189,7 +186,7 @@ namespace WeaponsOverhaul
 						AmmoDefinition a = MyAPIGateway.Utilities.SerializeFromXML<AmmoDefinition>(r.ReadToEnd());
 						r.Close();
 
-						Tools.Debug($"{((a.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user ammo definition {a.SubtypeId}");
+						Tools.Info($"{((a.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user ammo definition {a.SubtypeId}");
 
 						if (a.Enabled)
 						{
@@ -214,7 +211,7 @@ namespace WeaponsOverhaul
 						WeaponDefinition w = MyAPIGateway.Utilities.SerializeFromXML<WeaponDefinition>(r.ReadToEnd());
 						r.Close();
 
-						Tools.Debug($"{((w.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user weapon definition {w.SubtypeId}");
+						Tools.Info($"{((w.Enabled) ? "(ENABLED)" : "(DISABLED)")} Loading user weapon definition {w.SubtypeId}");
 
 						if (w.Enabled)
 						{
@@ -234,7 +231,6 @@ namespace WeaponsOverhaul
 		/// </summary>
 		private static void LoadKeenDefinitions()
 		{
-			Tools.Debug($"Loading Keen Definitions");
 			Type ammoType = typeof(AmmoDefinition);
 			Type weaponType = typeof(WeaponDefinition);
 			foreach (MyDefinitionBase def in MyDefinitionManager.Static.GetAllDefinitions())
@@ -247,12 +243,12 @@ namespace WeaponsOverhaul
 
 						if (ammo.IsExplosive)
 						{
-							Tools.Debug($"Skipping keen ammo definition: {ammo.Id}");
+							Tools.Info($"Skipping keen ammo definition: {ammo.Id}");
 							continue;
 						}
 						else
 						{
-							Tools.Debug($"Loading keen ammo definition: {ammo.Id}");
+							Tools.Info($"Loading keen ammo definition: {ammo.Id}");
 						}
 
 						AmmoDefinition a = AmmoDefinition.CreateFromKeenDefinition(ammo as MyProjectileAmmoDefinition);
@@ -260,7 +256,6 @@ namespace WeaponsOverhaul
 
 						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(a.SubtypeId, ammoType))
 						{
-							Tools.Debug($"Saving defintion to file");
 							try
 							{
 								AmmoDefinition ca = a.Clone();
@@ -285,12 +280,12 @@ namespace WeaponsOverhaul
 
 						if (weaponDef.HasMissileAmmoDefined)
 						{
-							Tools.Debug($"Skipping keen weapon definition: {block.WeaponDefinitionId}");
+							Tools.Info($"Skipping keen weapon definition: {block.WeaponDefinitionId}");
 							continue;
 						}
 						else
 						{
-							Tools.Debug($"Loading keen weapon definition: {block.WeaponDefinitionId}");
+							Tools.Info($"Loading keen weapon definition: {block.WeaponDefinitionId}");
 						}
 
 						// stop vanilla projectile from firing
@@ -310,7 +305,6 @@ namespace WeaponsOverhaul
 
 						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(w.SubtypeId, weaponType))
 						{
-							Tools.Debug($"Saving defintion to file");
 							try
 							{
 								WeaponDefinition cw = w.Clone();

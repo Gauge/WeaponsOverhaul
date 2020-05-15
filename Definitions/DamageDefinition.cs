@@ -13,7 +13,5 @@ namespace WeaponsOverhaul
         public float Damage;
 
         public MyStringHash DamageType;
-
-        //public Vector3 ForceVector;
     }
 }

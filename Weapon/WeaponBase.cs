@@ -17,9 +17,10 @@ namespace WeaponsOverhaul
 	{
 		public bool Initialized { get; private set; } = false;
 		public bool IsFixedGun { get; private set; }
-
-		public bool IsFixedGunTerminalShoot => (IsFixedGun && !((Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME));
 		public bool IsShooting => gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || (IsFixedGun && (Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME);
+		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
+		public bool IsReloading => CurrentReloadTime.Value > 0;
+
 
 		public NetSync<bool> TerminalShootOnce;
 		public NetSync<bool> TerminalShooting;
@@ -31,6 +32,8 @@ namespace WeaponsOverhaul
 		protected float CurrentReleaseTime = 0;
 		protected double TimeTillNextShot = 1d;
 		protected float CurrentIdleReloadTime = 0;
+
+		protected bool FirstTime;
 
 
 		protected WeaponControlLayer ControlLayer;
@@ -67,6 +70,7 @@ namespace WeaponsOverhaul
 			InitializeSound();
 
 			Initialized = true;
+			FirstTime = true;
 		}
 
 		private void InitializeSound()
@@ -104,7 +108,7 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void SystemRestart()
 		{
-			Tools.Debug($"Restarting Weapon Logic {Entity.EntityId}");
+			//Tools.Debug($"Restarting Weapon Logic {Entity.EntityId}");
 
 			MyWeaponBlockDefinition blockDef = ((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition);
 			WeaponDefinition d = Settings.WeaponDefinitionLookup[blockDef.WeaponDefinitionId.SubtypeId.String];
@@ -134,6 +138,14 @@ namespace WeaponsOverhaul
 			// true until proven false
 			WillFireThisFrame = true;
 
+			// This is to stop weapons from firing on place
+			if (FirstTime)
+			{
+				WillFireThisFrame = false;
+				FirstTime = false;
+				return;
+			}
+
 			// If cooldown is greater than 0 the gun is on cooldown and should not fire
 			// reduce cooldown and dont fire projectiles
 			if (CurrentReloadTime.Value > 0)
@@ -148,7 +160,6 @@ namespace WeaponsOverhaul
 			{
 				TerminalShooting.SetValue(false, SyncType.None);
 				WillFireThisFrame = false;
-				//StopShootingSound();
 				return;
 			}
 
@@ -158,12 +169,13 @@ namespace WeaponsOverhaul
 				TerminalShooting.SetValue(false, SyncType.None);
 			}
 
+			// this makes sure the gun will fire instantly when fire condisions are met
 			if (!IsShooting ||
 				Cube?.CubeGrid?.Physics == null ||
 				!gun.GunBase.HasEnoughAmmunition() ||
 				!WillFireThisFrame)
 			{
-				// this makes sure the gun will fire instantly when fire condisions are met
+
 				if (TimeTillNextShot < 1)
 				{
 					TimeTillNextShot += AmmoData.RateOfFire * Tools.FireRateMultiplayer;
@@ -181,10 +193,13 @@ namespace WeaponsOverhaul
 			{
 				TimeTillNextShot += AmmoData.RateOfFire * Tools.FireRateMultiplayer;
 			}
-			else
+
+			if (IsShooting && !gun.GunBase.HasEnoughAmmunition())
 			{
-				//StopShootingSound();
+				StartNoAmmoSound();
+				Notifications.Display(Cube.CubeGrid.EntityId);
 			}
+
 
 			IdleReload();
 			TerminalShootOnce.SetValue(false, SyncType.None);
@@ -205,7 +220,7 @@ namespace WeaponsOverhaul
 			{
 				// Fixed guns do not update unless the mouse is pressed.
 				// This updates the position when terminal fire is active.
-				if (IsFixedGunTerminalShoot)
+				if (IsFixedGun)
 				{
 					MyEntitySubpart subpart;
 					if (Entity.Subparts.TryGetValue("Barrel", out subpart))
@@ -279,12 +294,6 @@ namespace WeaponsOverhaul
 						TerminalShootOnce.SetValue(false, SyncType.None);
 						return;
 					}
-
-					//if (gun.GunBase.HasEnoughAmmunition())
-					//{
-					//	LastNoAmmoSound = 0;
-					//	break;
-					//}
 				}
 			}
 		}
@@ -304,6 +313,17 @@ namespace WeaponsOverhaul
 			else
 			{
 				PrimaryEmitter.PlaySound(AmmoData.ShootSoundPair, true, false, false);
+			}
+		}
+
+		public void StartNoAmmoSound() 
+		{
+			if (NoAmmoSoundPair == null || PrimaryEmitter == null)
+				return;
+
+			if (!PrimaryEmitter.IsPlaying)
+			{
+				PrimaryEmitter.PlaySound(NoAmmoSoundPair, true, false, false);
 			}
 		}
 
@@ -367,7 +387,7 @@ namespace WeaponsOverhaul
 			{
 				float delta = NetworkAPI.GetDeltaMilliseconds(CurrentReloadTime.LastMessageTimestamp);
 				CurrentReloadTime.SetValue(CurrentReloadTime.Value - delta, SyncType.None);
-				Tools.Debug($"ReloadTime: {delta}ms latency adjustment");
+				//Tools.Debug($"ReloadTime: {delta}ms latency adjustment");
 			}
 		}
 

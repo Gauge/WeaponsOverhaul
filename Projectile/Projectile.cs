@@ -44,7 +44,6 @@ namespace WeaponsOverhaul
 
 		public void Update() 
 		{
-			if (Expired) return;
 			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
 			Check();
@@ -58,7 +57,6 @@ namespace WeaponsOverhaul
 
 		private void Check() 
 		{
-			if (Expired) return;
 			Vector3D End = Position + Velocity * Tools.Tick;
 
 			IHitInfo hit;
@@ -71,7 +69,7 @@ namespace WeaponsOverhaul
 				//apply recoil
 				if (ammo.BackkickForce > 0)
 				{
-					Vector3 forceVector = hit.Normal * ammo.ProjectileHitImpulse;
+					Vector3 forceVector = -hit.Normal * ammo.ProjectileHitImpulse;
 					hit.HitEntity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, hit.Position, Vector3.Zero);
 				}
 
@@ -88,7 +86,6 @@ namespace WeaponsOverhaul
 						Damage = ammo.ProjectileMassDamage,
 						DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
 						ShooterId = ShooterId,
-						//ForceVector = hit.Normal * ammo.ProjectileHitImpulse
 					});
 				}
 				else if (hit.HitEntity is IMyCubeGrid)
@@ -104,7 +101,6 @@ namespace WeaponsOverhaul
 							Damage = ammo.ProjectileMassDamage,
 							DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
 							ShooterId = ShooterId,
-							//ForceVector =  hit.Normal * ammo.ProjectileHitImpulse
 						});
 					}
 				}
