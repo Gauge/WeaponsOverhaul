@@ -78,6 +78,7 @@ namespace WeaponsOverhaul
 		public override void UpdateBeforeSimulation()
 		{
 			base.UpdateBeforeSimulation();
+
 			Weapon.Update();
 			Weapon.Spawn();
 			
@@ -91,7 +92,8 @@ namespace WeaponsOverhaul
 		public virtual void SystemRestart()
 		{
 			Weapon.SystemRestart();
-			NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
+			if (MyAPIGateway.Session.WeaponsEnabled)
+				NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
 		}
 
 		public override void Close()

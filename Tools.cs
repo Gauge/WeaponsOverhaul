@@ -11,6 +11,8 @@ namespace WeaponsOverhaul
 		public const float MillisecondPerFrame = 1000f / 60f;
 		public const double FireRateMultiplayer = 1d / 60d / 60d;
 
+		public static T CastProhibit<T>(T ptr, object val) => (T)val;
+
 		public static float MaxSpeedLimit => ((MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed > MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) ?
 MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) + 10;
 

@@ -7,6 +7,7 @@ using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.Game.ObjectBuilders.Components;
 using VRage.Library.Utils;
 using VRage.ModAPI;
 using VRageMath;
@@ -167,6 +168,14 @@ namespace WeaponsOverhaul
 			if (gun.IsShooting)
 			{
 				TerminalShooting.SetValue(false, SyncType.None);
+			}
+
+			// do not shoot in safe zone
+			if (WillFireThisFrame && !MySessionComponentSafeZones.IsActionAllowed(Block.GetPosition(), Tools.CastProhibit(MySessionComponentSafeZones.AllowedActions, 2)))
+			{
+				TerminalShooting.SetValue(false, SyncType.None);
+				TerminalShootOnce.SetValue(false, SyncType.None);
+				WillFireThisFrame = false;
 			}
 
 			// this makes sure the gun will fire instantly when fire condisions are met
