@@ -1,4 +1,5 @@
 ﻿using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
 using SENetworkAPI;
@@ -6,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -33,13 +35,13 @@ namespace WeaponsOverhaul
 	{
 		public static bool ControlsInitialized = false;
 		public WeaponBase Weapon = new WeaponBase();
+		public bool Blacklisted = false;
 
 		/// <summary>
 		/// This fires before the init function so i am using it instead of init
 		/// </summary>
 		public override void OnAddedToContainer()
 		{
-			base.OnAddedToContainer();
 			if (!Weapon.Initialized)
 			{
 				Weapon.Init(this);
@@ -59,13 +61,13 @@ namespace WeaponsOverhaul
 
 		public override void Init(MyObjectBuilder_EntityBase objectBuilder)
 		{
-			base.Init(objectBuilder);
+			Blacklisted = IsThisBlockBlacklisted(Entity);
 
-			//if (IsThisBlockBlacklisted(Entity))
-			//{
-			//	MarkForClose();
-			//	return;
-			//}
+			if (Blacklisted)
+			{
+				MarkForClose();
+				return;
+			}
 
 			Weapon.Start();
 
@@ -77,7 +79,8 @@ namespace WeaponsOverhaul
 
 		public override void UpdateBeforeSimulation()
 		{
-			base.UpdateBeforeSimulation();
+			if (Blacklisted)
+				return;
 
 			Weapon.Update();
 			Weapon.Spawn();
@@ -91,6 +94,9 @@ namespace WeaponsOverhaul
 
 		public virtual void SystemRestart()
 		{
+			if (Blacklisted)
+				return;
+
 			Weapon.SystemRestart();
 			if (MyAPIGateway.Session.WeaponsEnabled)
 				NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
@@ -105,9 +111,7 @@ namespace WeaponsOverhaul
 
 		public static bool IsThisBlockBlacklisted(IMyEntity Entity)
 		{
-			//MyDefinitionBase def = (Entity as IMyTerminalBlock).SlimBlock.BlockDefinition;
-			//return Settings.BlackList.Contains(def.Id.SubtypeName);
-			return false;
+			return Settings.Static.Blacklist.Contains($"{((Entity as IMyCubeBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String}");
 		}
 
 		public static void TerminalIntitalize()

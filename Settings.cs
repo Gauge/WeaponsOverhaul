@@ -27,12 +27,14 @@ namespace WeaponsOverhaul
 		[ProtoMember(10)]
 		public bool DrawMuzzleFlash;
 
-		[ProtoMember(20)]
+		[ProtoMember(30)]
+		public List<string> Blacklist = new List<string>();
+
+		[ProtoMember(31)]
 		private List<AmmoDefinition> AmmoDefinitions = new List<AmmoDefinition>();
 
-		[ProtoMember(30)]
+		[ProtoMember(32)]
 		private List<WeaponDefinition> WeaponDefinitions = new List<WeaponDefinition>();
-
 
 		private static List<AmmoDefinition> KeenAmmoDefinitions = new List<AmmoDefinition>();
 		private static List<WeaponDefinition> KeenWeaponDefinitions = new List<WeaponDefinition>();
@@ -46,6 +48,7 @@ namespace WeaponsOverhaul
 			Version = 1;
 			WriteDefaultDefinitionsToFile = true;
 			DrawMuzzleFlash = true;
+			Blacklist.Add("SubtypeId for blacklisted weapons go here. then restart.");
 		}
 
 		/// <summary>
