@@ -29,7 +29,7 @@ namespace WeaponsOverhaul
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
             NetworkAPI.LogNetworkTraffic = false;
-            Tools.DebugMode = false;
+            Tools.DebugMode = true;
 
             if (!NetworkAPI.IsInitialized)
             {
@@ -85,7 +85,7 @@ namespace WeaponsOverhaul
 
         public override void UpdateBeforeSimulation()
         {
-            if (!MyAPIGateway.Utilities.IsDedicated)
+            if (Tools.DebugMode && !MyAPIGateway.Utilities.IsDedicated)
             {
                 MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
             }

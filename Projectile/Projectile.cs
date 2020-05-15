@@ -38,7 +38,9 @@ namespace WeaponsOverhaul
 			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
 			Position = Origin;
-			Velocity = initialVelocity + (direction * ammo.DesiredSpeed);
+
+			float speed = ammo.DesiredSpeed + ((ammo.SpeedVariance > 0) ? MyRandom.Instance.GetRandomFloat(-ammo.SpeedVariance, ammo.SpeedVariance) : 0);
+			Velocity = initialVelocity + (direction * speed);
 
 		}
 
