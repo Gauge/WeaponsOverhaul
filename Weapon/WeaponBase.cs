@@ -3,14 +3,18 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using SENetworkAPI;
+using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Game.ObjectBuilders.Components;
+using VRage.Input;
 using VRage.Library.Utils;
 using VRage.ModAPI;
+using VRage.ObjectBuilders;
 using VRageMath;
+using WeaponsOverhaul.Definitions;
 
 namespace WeaponsOverhaul
 {
@@ -18,13 +22,15 @@ namespace WeaponsOverhaul
 	{
 		public bool Initialized { get; private set; } = false;
 		public bool IsFixedGun { get; private set; }
-		public bool IsShooting => gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || (IsFixedGun && (Entity.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) == MyEntityUpdateEnum.EACH_FRAME);
+		public bool IsShooting => gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || ManualShooting.Value;
 		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
 		public bool IsReloading => CurrentReloadTime.Value > 0;
 
 
+		public NetSync<bool> ManualShooting;
 		public NetSync<bool> TerminalShootOnce;
 		public NetSync<bool> TerminalShooting;
+
 		protected NetSync<float> CurrentReloadTime;
 		protected NetSync<sbyte> DeviationIndex;
 
@@ -40,13 +46,15 @@ namespace WeaponsOverhaul
 		protected WeaponControlLayer ControlLayer;
 		protected MyEntity Entity;
 		protected IMyFunctionalBlock Block;
-		protected IMyCubeBlock Cube;
 		protected IMyGunObject<MyGunBase> gun;
 
 		protected MyParticleEffect muzzleFlash;
 
 		protected MyEntity3DSoundEmitter PrimaryEmitter;
 		protected MyEntity3DSoundEmitter SecondaryEmitter;
+
+		//protected static SerializableDefinitionId SelectedWeapon;
+		protected static MyDefinitionId WeaponDefinition;
 
 		/// <summary>
 		/// Called when game logic is added to container
@@ -56,10 +64,10 @@ namespace WeaponsOverhaul
 			ControlLayer = layer;
 			Entity = (MyEntity)layer.Entity;
 			Block = Entity as IMyFunctionalBlock;
-			Cube = Entity as IMyCubeBlock;
 			gun = Entity as IMyGunObject<MyGunBase>;
 			IsFixedGun = Entity is IMySmallGatlingGun;
 
+			ManualShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			TerminalShootOnce = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			TerminalShooting = new NetSync<bool>(ControlLayer, TransferType.Both, false);
 			CurrentReloadTime = new NetSync<float>(ControlLayer, TransferType.ServerToClient, 0);
@@ -102,6 +110,7 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Start()
 		{
+			WeaponDefinition = Block.SlimBlock.BlockDefinition.Id;
 		}
 
 		/// <summary>
@@ -125,12 +134,36 @@ namespace WeaponsOverhaul
 			InitializeSound();
 		}
 
+		protected void HandleInputs()
+		{
+			if (Block.CubeGrid.EntityId != Notifications.ControlledGridId || Notifications.SelectedDefinition != WeaponDefinition)
+				return;
+
+			if (MyAPIGateway.Gui.IsCursorVisible)
+				return;
+
+			if (MyAPIGateway.Input.IsNewPrimaryButtonPressed())
+			{
+				ManualShooting.Value = true;
+			}
+
+			if (MyAPIGateway.Input.IsNewPrimaryButtonReleased())
+			{
+				ManualShooting.Value = false;
+			}
+		}
+
 		/// <summary>
 		/// First call in the update loop
 		/// Used to update the firing state of this weapon
 		/// </summary>
 		public virtual void Update()
 		{
+			HandleInputs();
+
+			if (!IsShooting && (TimeTillNextShot == 1 || !Block.IsWorking))
+				return;
+			
 			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
 			//{
 			//	MyAPIGateway.Utilities.ShowNotification($"{(IsShooting ? "Shooting" : "Idle")}, RoF: {AmmoData.RateOfFire}, Shots: {CurrentShotInBurst}/{AmmoData.ShotsInBurst}, {(CurrentReloadTime.Value > 0 ? $"Cooldown {(ReloadTime - CurrentReloadTime.Value).ToString("n0")}/{ReloadTime}, " : "")}release: {CurrentReleaseTime.ToString("n0")}/{ReleaseTimeAfterFire}, Time: {TimeTillNextShot.ToString("n2")}", 1);
@@ -140,12 +173,12 @@ namespace WeaponsOverhaul
 			WillFireThisFrame = true;
 
 			// This is to stop weapons from firing on place
-			if (FirstTime)
-			{
-				WillFireThisFrame = false;
-				FirstTime = false;
-				return;
-			}
+			//if (FirstTime)
+			//{
+			//	WillFireThisFrame = false;
+			//	FirstTime = false;
+			//	return;
+			//}
 
 			// If cooldown is greater than 0 the gun is on cooldown and should not fire
 			// reduce cooldown and dont fire projectiles
@@ -157,7 +190,7 @@ namespace WeaponsOverhaul
 
 			// if the block is not functional toggle shooting to off
 			// this is not venilla and may get changed
-			if (!Cube.IsWorking)
+			if (!Block.IsWorking)
 			{
 				TerminalShooting.SetValue(false, SyncType.None);
 				WillFireThisFrame = false;
@@ -180,7 +213,7 @@ namespace WeaponsOverhaul
 
 			// this makes sure the gun will fire instantly when fire condisions are met
 			if (!IsShooting ||
-				Cube?.CubeGrid?.Physics == null ||
+				Block?.CubeGrid?.Physics == null ||
 				!gun.GunBase.HasEnoughAmmunition() ||
 				!WillFireThisFrame)
 			{
@@ -206,7 +239,7 @@ namespace WeaponsOverhaul
 			if (IsShooting && !gun.GunBase.HasEnoughAmmunition())
 			{
 				StartNoAmmoSound();
-				Notifications.Display(Cube.CubeGrid.EntityId);
+				Notifications.Display(Block.CubeGrid.EntityId);
 			}
 
 
@@ -260,8 +293,11 @@ namespace WeaponsOverhaul
 					//apply recoil
 					if (ammo.BackkickForce > 0)
 					{
-						var forceVector = -direction * ammo.BackkickForce;
-						Block.CubeGrid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, Block.GetPosition(), Vector3.Zero);
+						Core.PhysicsRequests.Enqueue(new PhysicsDefinition {
+							Target = Entity,
+							Force = -direction * ammo.BackkickForce,
+							Position = Entity.WorldMatrix.Translation
+						});
 					}
 
 					// create sound
@@ -325,7 +361,7 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		public void StartNoAmmoSound() 
+		public void StartNoAmmoSound()
 		{
 			if (NoAmmoSoundPair == null || PrimaryEmitter == null)
 				return;

@@ -4,22 +4,28 @@ using SENetworkAPI;
 using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Input;
+using VRage.ObjectBuilders;
 
 namespace WeaponsOverhaul
 {
 	[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
 	public class Notifications : MyNetworkSessionComponent
 	{
+		public static long ControlledGridId;
+		public static SerializableDefinitionId SelectedDefinition;
+
+		private static bool DisplayAnyway;
+
 		private int Tick;
 		private int Reloading;
 		private int OutOfAmmo;
 		private int NonFunctional;
 		private int Off;
 
-		private static bool DisplayAnyway;
-		private static long ControlledGridId;
+		private IMyShipController ActiveShipController;
 
-		public static void Display(long gridId) 
+		public static void Display(long gridId)
 		{
 			if (ControlledGridId == gridId)
 			{
@@ -40,6 +46,7 @@ namespace WeaponsOverhaul
 		public override void BeforeStart()
 		{
 			MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
+			Changed(null, MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntity);
 		}
 
 		private void Changed(VRage.Game.ModAPI.Interfaces.IMyControllableEntity o, VRage.Game.ModAPI.Interfaces.IMyControllableEntity n)
@@ -52,11 +59,9 @@ namespace WeaponsOverhaul
 			NonFunctional = 0;
 			Off = 0;
 
+			ActiveShipController = n?.Entity as IMyShipController;
+			SelectedDefinition = Tools.GetSelectedHotbarDefinition(ActiveShipController);
 			MyCubeGrid grid = (n?.Entity as MyCubeBlock)?.CubeGrid; // is controlling a turret
-			if (grid == null)
-			{
-				grid = n?.Entity as MyCubeGrid; // is controlling a grid
-			}
 
 			if (grid != null)
 			{
@@ -75,6 +80,25 @@ namespace WeaponsOverhaul
 
 		public override void UpdateBeforeSimulation()
 		{
+			List<MyKeys> keys = new List<MyKeys>();
+			MyAPIGateway.Input.GetPressedKeys(keys);
+
+			foreach (var key in keys)
+			{
+				if (key == MyKeys.D1 ||
+					key == MyKeys.D2 ||
+					key == MyKeys.D3 ||
+					key == MyKeys.D4 ||
+					key == MyKeys.D5 ||
+					key == MyKeys.D6 ||
+					key == MyKeys.D7 ||
+					key == MyKeys.D8 ||
+					key == MyKeys.D9)
+				{
+					SelectedDefinition = Tools.GetSelectedHotbarDefinition(ActiveShipController);
+				}
+			}
+
 			Tick++;
 			if (Tick == 180)
 			{

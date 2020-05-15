@@ -36,6 +36,7 @@ namespace WeaponsOverhaul
 		public static bool ControlsInitialized = false;
 		public WeaponBase Weapon = new WeaponBase();
 		public bool Blacklisted = false;
+		private bool waitframe = true;
 
 		/// <summary>
 		/// This fires before the init function so i am using it instead of init
@@ -71,7 +72,7 @@ namespace WeaponsOverhaul
 
 			Weapon.Start();
 
-			TerminalIntitalize();
+			//TerminalIntitalize();
 
 			if (Settings.Initialized)
 				SystemRestart();
@@ -79,8 +80,19 @@ namespace WeaponsOverhaul
 
 		public override void UpdateBeforeSimulation()
 		{
+			if (waitframe)
+			{
+				waitframe = false;
+				return;
+			}
+
+			TerminalIntitalize();
+
 			if (Blacklisted)
 				return;
+
+			if (Weapon.IsFixedGun)
+				Entity.NeedsUpdate = MyEntityUpdateEnum.NONE;
 
 			Weapon.Update();
 			Weapon.Spawn();
@@ -116,6 +128,7 @@ namespace WeaponsOverhaul
 
 		public static void TerminalIntitalize()
 		{
+
 			if (ControlsInitialized)
 				return;
 
@@ -292,6 +305,7 @@ namespace WeaponsOverhaul
 			MyAPIGateway.TerminalControls.GetControls<T>(out controls);
 			foreach (IMyTerminalControl c in controls)
 			{
+				Tools.Debug($"{c.Id}");
 				if (c.Id == "Shoot")
 				{
 					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;

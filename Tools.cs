@@ -1,5 +1,9 @@
-﻿using Sandbox.Definitions;
+﻿using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
+using Sandbox.ModAPI;
 using System;
+using VRage.Game;
+using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
 
@@ -19,12 +23,12 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 		public static bool DebugMode = false;
 		private const string Prefix = "[WeaponsOverhaul] ";
 
-		public static void Info(string message) 
+		public static void Info(string message)
 		{
 			MyLog.Default.Info($"{Prefix}{message}");
 		}
 
-		public static void Error(string message) 
+		public static void Error(string message)
 		{
 			MyLog.Default.Error($"{Prefix}{message}");
 		}
@@ -34,7 +38,7 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 			MyLog.Default.Warning($"{Prefix}{message}");
 		}
 
-		public static void Debug(string message) 
+		public static void Debug(string message)
 		{
 			if (DebugMode)
 			{
@@ -58,7 +62,7 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 		private const int Seed = 5366354;
 		private static float[] RandomSet;
 		private static float[] RandomSetFromAngle;
-		public static Vector3 ApplyDeviation(Vector3 direction, float maxAngle, ref sbyte index) 
+		public static Vector3 ApplyDeviation(Vector3 direction, float maxAngle, ref sbyte index)
 		{
 			if (maxAngle == 0)
 				return direction;
@@ -99,7 +103,28 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 			return Vector3.TransformNormal(normal, matrix);
 		}
 
+		public static SerializableDefinitionId GetSelectedHotbarDefinition(IMyShipController cockpit)//, ref int index)
+		{
+			if (cockpit == null)
+				return default(SerializableDefinitionId);
 
+			MyObjectBuilder_ShipController builder = cockpit.GetObjectBuilderCubeBlock(false) as MyObjectBuilder_ShipController;
+
+			int? slotIndex = builder?.Toolbar?.SelectedSlot;
+			if (!slotIndex.HasValue)
+				return default(SerializableDefinitionId);
+
+			MyObjectBuilder_Toolbar toolbar = builder.Toolbar;
+			if (toolbar.Slots.Count <= slotIndex.Value)
+				return default(SerializableDefinitionId);
+
+			var item = toolbar.Slots[slotIndex.Value];
+			if (!(item.Data is MyObjectBuilder_ToolbarItemWeapon))
+				return default(SerializableDefinitionId);
+
+			//index = toolbar.SelectedSlot.Value;
+			return (item.Data as MyObjectBuilder_ToolbarItemWeapon).defId;
+		}
 
 
 	}

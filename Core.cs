@@ -8,6 +8,7 @@ using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
+using WeaponsOverhaul.Definitions;
 
 namespace WeaponsOverhaul
 {
@@ -16,6 +17,7 @@ namespace WeaponsOverhaul
     {
 		#region setup
 		public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
+        public static ConcurrentQueue<PhysicsDefinition> PhysicsRequests = new ConcurrentQueue<PhysicsDefinition>();
         private static HashSet<Projectile> PendingProjectiles = new HashSet<Projectile>();
         private static HashSet<Projectile> ActiveProjectiles = new HashSet<Projectile>();
         private static HashSet<Projectile> ExpiredProjectiles = new HashSet<Projectile>();
@@ -29,7 +31,7 @@ namespace WeaponsOverhaul
         public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
         {
             NetworkAPI.LogNetworkTraffic = false;
-            Tools.DebugMode = true;
+            Tools.DebugMode = false;
 
             if (!NetworkAPI.IsInitialized)
             {
@@ -101,11 +103,17 @@ namespace WeaponsOverhaul
             });
 
             DamageDefinition def;
-            while (DamageRequests.Count > 0)
+            while (DamageRequests.TryDequeue(out def))
             {
-                DamageRequests.TryDequeue(out def);
                 def.Victim?.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.ShooterId);
             }
+
+            PhysicsDefinition pDef;
+            while (PhysicsRequests.TryDequeue(out pDef))
+            { 
+                pDef.Target?.Physics?.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, pDef.Force, pDef.Position, Vector3.Zero);
+            }
+
         }
 
         public override void Draw()
