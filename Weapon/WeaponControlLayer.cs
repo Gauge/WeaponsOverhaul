@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using VRage.Game.Components;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
@@ -33,7 +34,7 @@ namespace WeaponsOverhaul
 	/// </summary>
 	public class WeaponControlLayer : MyNetworkGameLogicComponent
 	{
-		public static bool ControlsInitialized = false;
+		public static bool HijackComplete = false;
 		public WeaponBase Weapon = new WeaponBase();
 		public bool Blacklisted = false;
 		private bool waitframe = true;
@@ -72,31 +73,27 @@ namespace WeaponsOverhaul
 
 			Weapon.Start();
 
-			//TerminalIntitalize();
-
 			if (Settings.Initialized)
 				SystemRestart();
+
+			NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME; 
 		}
 
-		public override void UpdateBeforeSimulation()
+		public override void UpdateOnceBeforeFrame()
 		{
 			if (waitframe)
 			{
 				waitframe = false;
+				NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
 				return;
 			}
 
-			TerminalIntitalize();
+			HijackSystem();
+		}
 
-			if (Blacklisted)
-				return;
-
-			if (Weapon.IsFixedGun)
-				Entity.NeedsUpdate = MyEntityUpdateEnum.NONE;
-
-			Weapon.Update();
-			Weapon.Spawn();
-			
+		public override void UpdateBeforeSimulation()
+		{
+			Weapon.Update();	
 		}
 
 		public override void UpdateAfterSimulation() 
@@ -106,12 +103,7 @@ namespace WeaponsOverhaul
 
 		public virtual void SystemRestart()
 		{
-			if (Blacklisted)
-				return;
-
 			Weapon.SystemRestart();
-			if (MyAPIGateway.Session.WeaponsEnabled)
-				NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME;
 		}
 
 		public override void Close()
@@ -126,16 +118,27 @@ namespace WeaponsOverhaul
 			return Settings.Static.Blacklist.Contains($"{((Entity as IMyCubeBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String}");
 		}
 
-		public static void TerminalIntitalize()
+		public static void HijackSystem()
 		{
-
-			if (ControlsInitialized)
+			if (HijackComplete)
 				return;
+
+			Action<MyEntity> old = MyEntitiesInterface.RegisterUpdate;
+
+			MyEntitiesInterface.RegisterUpdate = (e) =>
+			{
+				if (e.GameLogic.GetAs<WeaponControlLayer>() != null && e.NeedsUpdate != MyEntityUpdateEnum.NONE)
+				{
+					e.NeedsUpdate = MyEntityUpdateEnum.NONE;
+				}
+
+				old?.Invoke(e);
+			};
 
 			OverrideDefaultControls<IMySmallGatlingGun>();
 			OverrideDefaultControls<IMyLargeTurretBase>();
 
-			ControlsInitialized = true;
+			HijackComplete = true;
 		}
 
 		private static void OverrideDefaultControls<T>()
@@ -163,7 +166,16 @@ namespace WeaponsOverhaul
 								if (wb == null)
 									return;
 
-								wb.TerminalShooting.Value = !wb.TerminalShooting.Value;
+								wb.State.Value ^= WeaponState.TerminalShoot;
+
+								if ((wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
+								{
+									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+								}
+								else
+								{
+									logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
+								}
 							}
 							else
 							{
@@ -199,10 +211,11 @@ namespace WeaponsOverhaul
 							{
 								WeaponBase wb = logic.Weapon;
 
-								if (wb != null && !wb.TerminalShootOnce.Value)
-								{
-									wb.TerminalShootOnce.Value = true;
-								}
+								if (wb == null)
+									return;
+
+								wb.State.Value |= WeaponState.TerminalShootOnce;
+								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -226,11 +239,11 @@ namespace WeaponsOverhaul
 							if (logic != null)
 							{
 								WeaponBase wb = logic.Weapon;
+								if (wb == null)
+									return;
 
-								if (wb != null && !wb.TerminalShooting.Value)
-								{
-									wb.TerminalShooting.Value = true;
-								}
+								wb.State.Value |= WeaponState.TerminalShoot;
+								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -269,11 +282,11 @@ namespace WeaponsOverhaul
 							{
 								WeaponBase wb = logic.Weapon as WeaponBase;
 
-								if (wb != null && wb.TerminalShooting.Value)
-								{
+								if (wb == null)
+									return;
 
-									wb.TerminalShooting.Value = false;
-								}
+								wb.State.Value &= ~WeaponState.TerminalShoot;
+								logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -319,10 +332,18 @@ namespace WeaponsOverhaul
 							if (logic != null)
 							{
 								WeaponBase wb = logic.Weapon as WeaponBase;
+								if (wb == null)
+									return;
 
-								if (wb != null && wb.TerminalShooting.Value != value)
+								wb.State.Value ^= WeaponState.TerminalShoot;
+
+								if ((wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
 								{
-									wb.TerminalShooting.Value = value;
+									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+								}
+								else
+								{
+									logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
 								}
 							}
 							else
@@ -342,7 +363,7 @@ namespace WeaponsOverhaul
 							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
 							if (logic != null)
 							{
-								return logic.Weapon.TerminalShooting.Value;
+								return (logic.Weapon.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
 							}
 							else
 							{
@@ -367,11 +388,11 @@ namespace WeaponsOverhaul
 							if (logic != null)
 							{
 								WeaponBase wb = logic.Weapon;
+								if (wb == null)
+									return;
 
-								if (wb != null && !wb.TerminalShootOnce.Value)
-								{
-									wb.TerminalShootOnce.Value = true;
-								}
+								wb.State.Value |= WeaponState.TerminalShootOnce;
+								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -389,7 +410,7 @@ namespace WeaponsOverhaul
 
 		private static void WeaponsFiringWriter(WeaponBase wb, StringBuilder str)
 		{
-			if (wb != null && wb.TerminalShooting.Value)
+			if (wb != null && (wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
 			{
 				str.Append("On");
 			}

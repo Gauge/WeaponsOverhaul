@@ -13,7 +13,10 @@ namespace WeaponsOverhaul
 	{
 		public const float Tick = 1f / 60f;
 		public const float MillisecondPerFrame = 1000f / 60f;
-		public const double FireRateMultiplayer = 1d / 60d / 60d;
+		public const float FireRateMultiplayer = 1f / 60f / 60f;
+
+		public const float MinutesToMilliseconds = 1f / 60f / 1000f;
+		public const float TicksToMilliseconds = 1f / TimeSpan.TicksPerMillisecond;
 
 		public static T CastProhibit<T>(T ptr, object val) => (T)val;
 
