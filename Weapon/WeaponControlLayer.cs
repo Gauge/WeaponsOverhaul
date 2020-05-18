@@ -172,10 +172,6 @@ namespace WeaponsOverhaul
 								{
 									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 								}
-								else
-								{
-									logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
-								}
 							}
 							else
 							{
@@ -286,7 +282,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value &= ~WeaponState.TerminalShoot;
-								logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -340,10 +335,6 @@ namespace WeaponsOverhaul
 								if ((wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
 								{
 									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-								}
-								else
-								{
-									logic.NeedsUpdate &= ~MyEntityUpdateEnum.EACH_FRAME;
 								}
 							}
 							else

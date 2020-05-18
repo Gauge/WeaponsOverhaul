@@ -147,6 +147,13 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Update()
 		{
+			// stop looping if not shooting
+			if (!IsShooting)
+			{
+				ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				return;
+			}
+
 			byte notify = 0x0;
 			DateTime currentTime = DateTime.UtcNow;
 			double timeSinceLastShot = (currentTime - LastShootTime).TotalMilliseconds;
@@ -154,13 +161,6 @@ namespace WeaponsOverhaul
 			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
 			//{
 			//	MyAPIGateway.Utilities.ShowNotification($"ShootTime: {timeSinceLastShot.ToString("n0")}ms - {State.Value} - {IsShooting} - {IsReloading} - {(timeSinceLastShot * (AmmoData.RateOfFire * Tools.MinutesToMilliseconds)).ToString("n2")} {CurrentShotInBurst}/{AmmoData.ShotsInBurst}", 1);
-			//}
-
-			// stop looping if not shooting
-			//if (!IsShooting)
-			//{
-			//	ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
-			//	return;
 			//}
 
 			// Stops if weapons are reloading
@@ -444,36 +444,6 @@ namespace WeaponsOverhaul
 		public virtual void Close()
 		{
 			muzzleFlash?.Stop();
-			//CurrentReloadTime.ValueChangedByNetwork -= CurrentReloadTimeUpdate;
 		}
-
-		//protected virtual void IdleReload()
-		//{
-		//	if (!IsShooting && CurrentShotInBurst > 0)
-		//	{
-		//		if (CurrentIdleReloadTime >= ReloadTime)
-		//		{
-		//			CurrentShotInBurst = 0;
-		//			CurrentIdleReloadTime = 0;
-		//		}
-
-		//		CurrentIdleReloadTime += Tools.MillisecondPerFrame;
-		//	}
-		//	else
-		//	{
-		//		CurrentIdleReloadTime = 0;
-		//	}
-		//}
-
-		//protected void CurrentReloadTimeUpdate(float o, float n, ulong steamId)
-		//{
-		//	if (n == ReloadTime)
-		//	{
-		//		float delta = NetworkAPI.GetDeltaMilliseconds(CurrentReloadTime.LastMessageTimestamp);
-		//		CurrentReloadTime.SetValue(CurrentReloadTime.Value - delta, SyncType.None);
-		//		//Tools.Debug($"ReloadTime: {delta}ms latency adjustment");
-		//	}
-		//}
-
 	}
 }
