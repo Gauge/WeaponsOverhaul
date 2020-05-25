@@ -124,7 +124,6 @@ namespace WeaponsOverhaul
 				return;
 
 			Action<MyEntity> old = MyEntitiesInterface.RegisterUpdate;
-
 			MyEntitiesInterface.RegisterUpdate = (e) =>
 			{
 				if (e.GameLogic.GetAs<WeaponControlLayer>() != null && e.NeedsUpdate != MyEntityUpdateEnum.NONE)
@@ -167,11 +166,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value ^= WeaponState.TerminalShoot;
-
-								if ((wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
-								{
-									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-								}
 							}
 							else
 							{
@@ -211,7 +205,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value |= WeaponState.TerminalShootOnce;
-								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -239,7 +232,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value |= WeaponState.TerminalShoot;
-								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{
@@ -331,11 +323,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value ^= WeaponState.TerminalShoot;
-
-								if ((wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
-								{
-									logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-								}
 							}
 							else
 							{
@@ -383,7 +370,6 @@ namespace WeaponsOverhaul
 									return;
 
 								wb.State.Value |= WeaponState.TerminalShootOnce;
-								logic.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 							}
 							else
 							{

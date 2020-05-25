@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.Input;
+using VRage.ObjectBuilders;
 using VRageMath;
 using WeaponsOverhaul.Definitions;
 
@@ -17,11 +19,8 @@ namespace WeaponsOverhaul
 	{
 
 		#region setup
-		public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
-		public static ConcurrentQueue<PhysicsDefinition> PhysicsRequests = new ConcurrentQueue<PhysicsDefinition>();
-		private static HashSet<Projectile> PendingProjectiles = new HashSet<Projectile>();
-		private static HashSet<Projectile> ActiveProjectiles = new HashSet<Projectile>();
-		private static HashSet<Projectile> ExpiredProjectiles = new HashSet<Projectile>();
+		//public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
+		//public static ConcurrentQueue<PhysicsDefinition> PhysicsRequests = new ConcurrentQueue<PhysicsDefinition>();
 
 		public const ushort ModId = 12144;
 		public const string ModName = "WeaponsOverhaul";
@@ -29,14 +28,16 @@ namespace WeaponsOverhaul
 
 		private NetSync<Settings> NetSettings;
 
-
-		public static long ControlledGridId;
 		private static bool DisplayNotification;
 		private long LastNotification;
-		//public static SerializableDefinitionId SelectedDefinition;
-		private IMyShipController ActiveShipController;
 
-		private List<WeaponControlLayer> GridWeapons = new List<WeaponControlLayer>();
+		public static long ControlledGridId;
+		private static IMyShipController ActiveShipController;
+		private static IMyLargeTurretBase ActiveTurret;
+		private static SerializableDefinitionId SelectedDefinitionId;
+		private static List<WeaponBase> GridWeapons = new List<WeaponBase>();
+
+
 
 		public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
 		{
@@ -68,7 +69,6 @@ namespace WeaponsOverhaul
 			Settings.Load();
 		}
 
-
 		public override void BeforeStart()
 		{
 			MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
@@ -77,12 +77,24 @@ namespace WeaponsOverhaul
 
 		private void Changed(VRage.Game.ModAPI.Interfaces.IMyControllableEntity o, VRage.Game.ModAPI.Interfaces.IMyControllableEntity n)
 		{
+
+			foreach (WeaponBase w in GridWeapons)
+			{
+				w.State.Value &= ~WeaponState.ManualShoot;
+			}
+
 			GridWeapons.Clear();
 			ControlledGridId = 0;
 
-			ActiveShipController = n?.Entity as IMyShipController;
-			//SelectedDefinition = Tools.GetSelectedHotbarDefinition(ActiveShipController);
-			MyCubeGrid grid = (n?.Entity as MyCubeBlock)?.CubeGrid; // is controlling a turret
+			ActiveTurret = n?.Entity as IMyLargeTurretBase;
+
+			if (ActiveTurret == null)
+			{
+				ActiveShipController = n?.Entity as IMyShipController;
+				SelectedDefinitionId = Tools.GetSelectedHotbarDefinition(ActiveShipController);
+			}
+
+			MyCubeGrid grid = (n?.Entity as MyCubeBlock)?.CubeGrid;
 
 			if (grid != null)
 			{
@@ -93,7 +105,7 @@ namespace WeaponsOverhaul
 
 					if (layer != null)
 					{
-						GridWeapons.Add(layer);
+						GridWeapons.Add(layer.Weapon);
 					}
 				}
 			}
@@ -102,37 +114,36 @@ namespace WeaponsOverhaul
 		private void Notify()
 		{
 			long current = DateTime.UtcNow.Ticks;
-			if ((current - LastNotification) / TimeSpan.TicksPerMillisecond < 3000)
+			if ((current - LastNotification) / TimeSpan.TicksPerMillisecond < 3016)
 				return;
-			
+
 			int reloading = 0;
 			int outOfAmmo = 0;
 			int nonFunctional = 0;
 			int off = 0;
 			LastNotification = current;
 
-			foreach (WeaponControlLayer layer in GridWeapons)
+			foreach (WeaponBase w in GridWeapons)
 			{
-				if (layer == null)
+				if (w == null)
 				{
 					nonFunctional++;
 				}
 				else
 				{
-					IMyFunctionalBlock f = (layer.Entity as IMyFunctionalBlock);
-					if (f == null)
+					if (w.Block == null)
 					{
 						nonFunctional++;
 						continue;
 					}
 
-					if (!f.IsFunctional)
+					if (!w.Block.IsFunctional)
 						nonFunctional++;
-					if (!f.IsWorking)
+					if (!w.Block.IsWorking)
 						off++;
-					if (layer.Weapon.IsOutOfAmmo)
+					if (w.IsOutOfAmmo)
 						outOfAmmo++;
-					if (layer.Weapon.IsReloading)
+					if (w.IsReloading)
 						reloading++;
 				}
 			}
@@ -154,33 +165,118 @@ namespace WeaponsOverhaul
 			Settings.SetUserDefinitions(n);
 		}
 
+		public void HandleInputs()
+		{
+			if (MyAPIGateway.Gui.IsCursorVisible)
+				return;
+
+			if (ActiveShipController != null)
+			{
+				List<MyKeys> keys = new List<MyKeys>();
+				MyAPIGateway.Input.GetPressedKeys(keys);
+
+				foreach (var key in keys)
+				{
+					if (key == MyKeys.D1 ||
+						key == MyKeys.D2 ||
+						key == MyKeys.D3 ||
+						key == MyKeys.D4 ||
+						key == MyKeys.D5 ||
+						key == MyKeys.D6 ||
+						key == MyKeys.D7 ||
+						key == MyKeys.D8 ||
+						key == MyKeys.D9)
+					{
+						SelectedDefinitionId = Tools.GetSelectedHotbarDefinition(ActiveShipController);
+					}
+				}
+			}
+
+			if (MyAPIGateway.Input.IsNewPrimaryButtonPressed())
+			{
+				Tools.Debug("primary key pressed");
+				if (ActiveTurret != null)
+				{
+					WeaponControlLayer layer = ActiveTurret.GameLogic.GetAs<WeaponControlLayer>();
+					layer.Weapon.State.Value |= WeaponState.ManualShoot;
+				}
+				else
+				{
+
+
+					Tools.Debug($"looping over {GridWeapons.Count} weapons");
+					foreach (WeaponBase w in GridWeapons)
+					{
+						if (SelectedDefinitionId == w.WeaponDefinition)
+						{
+							w.State.Value |= WeaponState.ManualShoot;
+						}
+					}
+				}
+			}
+
+			if (MyAPIGateway.Input.IsNewPrimaryButtonReleased())
+			{
+				Tools.Debug("primary key released");
+				if (ActiveTurret != null)
+				{
+					WeaponControlLayer layer = ActiveTurret.GameLogic.GetAs<WeaponControlLayer>();
+					layer.Weapon.State.Value &= ~WeaponState.ManualShoot;
+				}
+				else
+				{
+					foreach (WeaponBase w in GridWeapons)
+					{
+						if (SelectedDefinitionId == w.WeaponDefinition)
+						{
+							w.State.Value &= ~WeaponState.ManualShoot;
+						}
+					}
+				}
+			}
+		}
+
+		public override void LoadData()
+		{
+			Static = this;
+		}
+
 		protected override void UnloadData()
 		{
+			Static = null;
 			Network.Close();
 		}
 		#endregion
 
 		#region projectile logic
 
-		public static void SpawnProjectile(Projectile data)
-		{
-			lock (PendingProjectiles)
-			{
-				PendingProjectiles.Add(data);
-			}
-		}
+		public static Core Static;
 
-		public static void ExpireProjectile(Projectile data)
+		private Projectile[] Projectiles = new Projectile[2048];
+		private int projectileCount;
+		private object projectileCreationLock = new object();
+
+		public void Spawn(Vector3D origin, Vector3 direction, Vector3D startVelocity, long shooterId, AmmoDefinition ammo) 
 		{
-			data.Expired = true;
-			ExpiredProjectiles.Add(data);
+			lock (projectileCreationLock)
+			{
+				projectileCount++;
+				if (Projectiles.Length < projectileCount)
+				{
+					Projectile[] newArray = new Projectile[Projectiles.Length * 2];
+					Array.Copy(Projectiles, newArray, Projectiles.Length);
+					Projectiles = newArray;
+				}
+
+				Projectiles[projectileCount - 1] = new Projectile(origin, direction, startVelocity, ammo, shooterId);
+			}	
 		}
 
 		public override void UpdateBeforeSimulation()
 		{
 			if (Tools.DebugMode && !MyAPIGateway.Utilities.IsDedicated)
 			{
-				MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {ActiveProjectiles.Count}, Pending: {PendingProjectiles.Count}, Expired: {ExpiredProjectiles.Count}", 1);
+				MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {projectileCount}", 1);
 			}
 
 			if (DisplayNotification)
@@ -188,34 +284,32 @@ namespace WeaponsOverhaul
 				Notify();
 			}
 
-			ActiveProjectiles.ExceptWith(ExpiredProjectiles);
-			ExpiredProjectiles.Clear();
-
-			ActiveProjectiles.UnionWith(PendingProjectiles);
-			PendingProjectiles.Clear();
-
-			MyAPIGateway.Parallel.ForEach(ActiveProjectiles, (Projectile p) => {
+			for (int i = 0; i < projectileCount; i++)
+			{
+				Projectile p = Projectiles[i];
 				p.Update();
-			});
+				if (p.Expired)
+				{
+					int newIndex = projectileCount - 1;
+					if (newIndex != i)
+					{
+						Projectiles[i] = Projectiles[newIndex];
 
-			DamageDefinition def;
-			while (DamageRequests.TryDequeue(out def))
-			{
-				def.Victim?.DoDamage(def.Damage, def.DamageType, false, default(MyHitInfo), def.ShooterId);
+						Projectiles[newIndex] = null;
+					}		
+					i--;
+					projectileCount--;
+				}
 			}
 
-			PhysicsDefinition pDef;
-			while (PhysicsRequests.TryDequeue(out pDef))
-			{
-				pDef.Target?.Physics?.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, pDef.Force, pDef.Position, Vector3.Zero);
-			}
+			HandleInputs();
 		}
 
 		public override void Draw()
 		{
-			foreach (Projectile p in ActiveProjectiles)
+			for (int i = 0; i < projectileCount; i++)
 			{
-				p.Draw();
+				Projectiles[i].Draw();
 			}
 		}
 

@@ -16,7 +16,7 @@ namespace WeaponsOverhaul
 
 		public long ShooterId;
 
-		public string AmmoDefinitionId;
+		public AmmoDefinition Ammo;
 
 		public Vector3D Origin;
 
@@ -28,32 +28,27 @@ namespace WeaponsOverhaul
 
 		private bool DrawFullTracer;
 
-		public Projectile(long shooterId, Vector3D origin, Vector3D direction, Vector3D initialVelocity, string ammoDefinitionId)
+		public Projectile(Vector3D origin, Vector3 direction, Vector3D startVelocity, AmmoDefinition ammo, long shooterId) 
 		{
+			Ammo = ammo;
 			ShooterId = shooterId;
-			AmmoDefinitionId = ammoDefinitionId;
+
 			Origin = origin;
+			Position = origin;
 			Direction = direction;
 
-			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
-
-			Position = Origin;
-
 			float speed = ammo.DesiredSpeed + ((ammo.SpeedVariance > 0) ? MyRandom.Instance.GetRandomFloat(-ammo.SpeedVariance, ammo.SpeedVariance) : 0);
-			Velocity = initialVelocity + (direction * speed);
-
+			Velocity = startVelocity + (Direction * speed);
 		}
 
 		public void Update() 
 		{
-			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
-
 			Check();
 
 			Position += Velocity * Tools.Tick;
-			if ((Origin - Position).LengthSquared() > ammo.MaxTrajectory * ammo.MaxTrajectory)
+			if ((Origin - Position).LengthSquared() > Ammo.MaxTrajectory * Ammo.MaxTrajectory)
 			{
-				Core.ExpireProjectile(this);
+				Expired = true;
 			}
 		}
 
@@ -66,29 +61,28 @@ namespace WeaponsOverhaul
 			if (hit != null)
 			{
 				Expired = true;
-				AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
 
 				//apply recoil
-				if (ammo.BackkickForce > 0)
+				if (Ammo.ProjectileHitImpulse > 0)
 				{
-					Vector3 forceVector = -hit.Normal * ammo.ProjectileHitImpulse;
+					Vector3 forceVector = -hit.Normal * Ammo.ProjectileHitImpulse;
 					hit.HitEntity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, forceVector, hit.Position, Vector3.Zero);
 				}
 
 				if (!MyAPIGateway.Session.IsServer)
 				{
-					Core.ExpireProjectile(this);
+					Expired = true;
 					return;
 				}
 
 				if (hit.HitEntity is IMyDestroyableObject)
 				{
-					Core.DamageRequests.Enqueue(new DamageDefinition {
-						Victim = (hit.HitEntity as IMyDestroyableObject),
-						Damage = ammo.ProjectileMassDamage,
-						DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
-						ShooterId = ShooterId,
-					});
+					//Core.DamageRequests.Enqueue(new DamageDefinition {
+					//	Victim = (hit.HitEntity as IMyDestroyableObject),
+					//	Damage = Ammo.ProjectileMassDamage,
+					//	DamageType = MyStringHash.GetOrCompute(Ammo.SubtypeId),
+					//	ShooterId = ShooterId,
+					//});
 				}
 				else if (hit.HitEntity is IMyCubeGrid)
 				{
@@ -98,28 +92,25 @@ namespace WeaponsOverhaul
 					{
 						IMySlimBlock block = grid.GetCubeBlock(hitPos.Value);
 
-						Core.DamageRequests.Enqueue(new DamageDefinition {
-							Victim = block,
-							Damage = ammo.ProjectileMassDamage,
-							DamageType = MyStringHash.GetOrCompute(ammo.SubtypeId),
-							ShooterId = ShooterId,
-						});
+						//Core.DamageRequests.Enqueue(new DamageDefinition {
+						//	Victim = block,
+						//	Damage = Ammo.ProjectileMassDamage,
+						//	DamageType = MyStringHash.GetOrCompute(Ammo.SubtypeId),
+						//	ShooterId = ShooterId,
+						//});
 					}
 				}
 
-				Core.ExpireProjectile(this);
+				Expired = true;
 			}
 		}
 
 		public void Draw()
 		{
 			// Most of this function was ripped from whiplash141's work.
-
-			AmmoDefinition ammo = Settings.AmmoDefinitionLookup[AmmoDefinitionId];
-
-			if (MyRandom.Instance.NextFloat() < ammo.ProjectileTrailProbability)
+			if (MyRandom.Instance.NextFloat() < Ammo.ProjectileTrailProbability)
 			{
-				float length = 0.6f * 40f * ammo.ProjectileTrailScale;
+				float length = 0.6f * 40f * Ammo.ProjectileTrailScale;
 				Vector3D start;
 				if (DrawFullTracer)
 				{
@@ -142,12 +133,12 @@ namespace WeaponsOverhaul
 				} 
 
 				float scaleFactor = MyParticlesManager.Paused ? 1f : MyUtils.GetRandomFloat(1f, 2f);
-				float thickness = (MyParticlesManager.Paused ? 0.2f : MyUtils.GetRandomFloat(0.2f, 0.3f)) * ammo.ProjectileTrailScale;
+				float thickness = (MyParticlesManager.Paused ? 0.2f : MyUtils.GetRandomFloat(0.2f, 0.3f)) * Ammo.ProjectileTrailScale;
 				thickness *= MathHelper.Lerp(0.2f, 0.8f, 1f);
 
-				MyStringId mat = string.IsNullOrWhiteSpace(ammo.ProjectileTrailMaterial) ? MyStringId.GetOrCompute("ProjectileTrailLine") : MyStringId.GetOrCompute(ammo.ProjectileTrailMaterial);
+				MyStringId mat = string.IsNullOrWhiteSpace(Ammo.ProjectileTrailMaterial) ? MyStringId.GetOrCompute("ProjectileTrailLine") : MyStringId.GetOrCompute(Ammo.ProjectileTrailMaterial);
 
-				MyTransparentGeometry.AddLineBillboard(mat, new Vector4(ammo.ProjectileTrailColor * scaleFactor * 10f, 1f), start, Direction, length, thickness);
+				MyTransparentGeometry.AddLineBillboard(mat, new Vector4(Ammo.ProjectileTrailColor * scaleFactor * 10f, 1f), start, Direction, length, thickness);
 			}
 		}
 	}

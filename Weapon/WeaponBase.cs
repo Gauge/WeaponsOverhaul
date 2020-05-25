@@ -39,18 +39,17 @@ namespace WeaponsOverhaul
 		protected float CurrentIdleReloadTime = 0;
 		protected DateTime LastShootTime;
 
-		protected WeaponControlLayer ControlLayer;
-		protected MyEntity Entity;
-		protected IMyFunctionalBlock Block;
-		protected IMyGunObject<MyGunBase> gun;
+		public WeaponControlLayer ControlLayer { get; private set; }
+		public MyCubeBlock CubeBlock { get; private set; }
+		public IMyFunctionalBlock Block { get; private set; }
+		public IMyGunObject<MyGunBase> gun { get; private set; }
 
 		protected MyParticleEffect muzzleFlash;
-
 		protected MyEntity3DSoundEmitter PrimaryEmitter;
 		protected MyEntity3DSoundEmitter SecondaryEmitter;
 
 		//protected static SerializableDefinitionId SelectedWeapon;
-		protected static MyDefinitionId WeaponDefinition;
+		public MyDefinitionId WeaponDefinition;
 
 		protected byte Notify = 0x0;
 
@@ -60,16 +59,17 @@ namespace WeaponsOverhaul
 		public virtual void Init(WeaponControlLayer layer)
 		{
 			ControlLayer = layer;
-			Entity = (MyEntity)layer.Entity;
-			Block = Entity as IMyFunctionalBlock;
-			gun = Entity as IMyGunObject<MyGunBase>;
-			IsFixedGun = Entity is IMySmallGatlingGun;
+			CubeBlock = (MyCubeBlock)layer.Entity;
+			Block = CubeBlock as IMyFunctionalBlock;
+			gun = CubeBlock as IMyGunObject<MyGunBase>;
+			IsFixedGun = CubeBlock is IMySmallGatlingGun;
 
 			State = new NetSync<WeaponState>(ControlLayer, TransferType.Both, WeaponState.None);
+			State.ValueChanged += StateChanged;
 			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
 
-			PrimaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
-			SecondaryEmitter = new MyEntity3DSoundEmitter(Entity, useStaticList: true);
+			PrimaryEmitter = new MyEntity3DSoundEmitter(CubeBlock, useStaticList: true);
+			SecondaryEmitter = new MyEntity3DSoundEmitter(CubeBlock, useStaticList: true);
 			InitializeSound();
 
 			Initialized = true;
@@ -98,12 +98,33 @@ namespace WeaponsOverhaul
 			}
 		}
 
+		private void StateChanged(WeaponState o, WeaponState n) 
+		{
+			bool shooting = IsShooting;
+			bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
+				(o & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
+				(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
+				(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
+
+			if (oldshoot != shooting)
+			{
+				if (shooting)
+				{
+					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
+				}
+				else
+				{
+					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				}
+			}
+		}
+
 		/// <summary>
 		/// Called before update loop begins
 		/// </summary>
 		public virtual void Start()
 		{
-			WeaponDefinition = Block.SlimBlock.BlockDefinition.Id;
+			WeaponDefinition = CubeBlock.BlockDefinition.Id;
 		}
 
 		/// <summary>
@@ -113,7 +134,7 @@ namespace WeaponsOverhaul
 		{
 			//Tools.Debug($"Restarting Weapon Logic {Entity.EntityId}");
 
-			MyWeaponBlockDefinition blockDef = ((Entity as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition);
+			MyWeaponBlockDefinition blockDef = ((CubeBlock as IMyFunctionalBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition);
 			WeaponDefinition d = Settings.WeaponDefinitionLookup[blockDef.WeaponDefinitionId.SubtypeId.String];
 			Copy(d);
 
@@ -204,7 +225,7 @@ namespace WeaponsOverhaul
 					if (IsFixedGun)
 					{
 						MyEntitySubpart subpart;
-						if (Entity.Subparts.TryGetValue("Barrel", out subpart))
+						if (CubeBlock.Subparts.TryGetValue("Barrel", out subpart))
 						{
 							gun.GunBase.WorldMatrix = subpart.PositionComp.WorldMatrixRef;
 						}
@@ -224,18 +245,19 @@ namespace WeaponsOverhaul
 					DeviationIndex.SetValue(index, SyncType.None);
 
 					// spawn projectile
-					Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
-					Core.SpawnProjectile(bullet);
+					Core.Static.Spawn(positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, Block.EntityId, ammo);
+					//Projectile bullet = new Projectile(CubeBlock.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
+					//Core.SpawnProjectile(bullet);
 					gun.GunBase.ConsumeAmmo();
 
 					//apply recoil
 					if (ammo.BackkickForce > 0)
 					{
-						Core.PhysicsRequests.Enqueue(new PhysicsDefinition {
-							Target = Entity,
-							Force = -direction * ammo.BackkickForce,
-							Position = Entity.WorldMatrix.Translation
-						});
+						//Core.PhysicsRequests.Enqueue(new PhysicsDefinition {
+						//	Target = CubeBlock,
+						//	Force = -direction * ammo.BackkickForce,
+						//	Position = CubeBlock.WorldMatrix.Translation
+						//});
 					}
 
 					// create sound
