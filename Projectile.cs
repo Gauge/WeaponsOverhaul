@@ -6,6 +6,8 @@ using VRage.Game.ModAPI;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Game.ModAPI.Interfaces;
+using System.Collections.Generic;
+using System;
 
 namespace WeaponsOverhaul
 {
@@ -43,8 +45,26 @@ namespace WeaponsOverhaul
 
 		public void Update() 
 		{
-			Check();
+			bool UseDefaultCheck = true;
 
+			if (Ammo.Ricochet.Enabled)
+			{
+				Ammo.Ricochet.Check(this);
+				UseDefaultCheck = false;
+			}
+
+			// add more here
+
+			if (UseDefaultCheck)
+			{
+				Check();
+			}
+
+			Travel();
+		}
+
+		private void Travel() 
+		{
 			Position += Velocity * Tools.Tick;
 			if ((Origin - Position).LengthSquared() > Ammo.MaxTrajectory * Ammo.MaxTrajectory)
 			{
@@ -71,18 +91,13 @@ namespace WeaponsOverhaul
 
 				if (!MyAPIGateway.Session.IsServer)
 				{
-					Expired = true;
 					return;
 				}
 
 				if (hit.HitEntity is IMyDestroyableObject)
 				{
-					//Core.DamageRequests.Enqueue(new DamageDefinition {
-					//	Victim = (hit.HitEntity as IMyDestroyableObject),
-					//	Damage = Ammo.ProjectileMassDamage,
-					//	DamageType = MyStringHash.GetOrCompute(Ammo.SubtypeId),
-					//	ShooterId = ShooterId,
-					//});
+					(hit.HitEntity as IMyDestroyableObject).DoDamage(Ammo.ProjectileMassDamage, MyStringHash.GetOrCompute(Ammo.SubtypeId), false, null, ShooterId);
+
 				}
 				else if (hit.HitEntity is IMyCubeGrid)
 				{
@@ -91,23 +106,15 @@ namespace WeaponsOverhaul
 					if (hitPos.HasValue)
 					{
 						IMySlimBlock block = grid.GetCubeBlock(hitPos.Value);
-
-						//Core.DamageRequests.Enqueue(new DamageDefinition {
-						//	Victim = block,
-						//	Damage = Ammo.ProjectileMassDamage,
-						//	DamageType = MyStringHash.GetOrCompute(Ammo.SubtypeId),
-						//	ShooterId = ShooterId,
-						//});
+						block.DoDamage(Ammo.ProjectileMassDamage, MyStringHash.GetOrCompute(Ammo.SubtypeId), false, null, ShooterId);
 					}
 				}
-
-				Expired = true;
 			}
 		}
 
 		public void Draw()
 		{
-			// Most of this function was ripped from whiplash141's work.
+			// Most of this function was ripped from whiplash141's weapon framework.
 			if (MyRandom.Instance.NextFloat() < Ammo.ProjectileTrailProbability)
 			{
 				float length = 0.6f * 40f * Ammo.ProjectileTrailScale;

@@ -8,11 +8,10 @@ using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Library.Utils;
 using VRageMath;
-using WeaponsOverhaul.Definitions;
 
 namespace WeaponsOverhaul
 {
-	public enum WeaponState {None = 0, Reloading = 1, ManualShoot = 2, AIShoot = 4, TerminalShoot = 8, TerminalShootOnce = 16}
+	public enum WeaponState { None = 0, Reloading = 1, ManualShoot = 2, AIShoot = 4, TerminalShoot = 8, TerminalShootOnce = 16 }
 
 	public class WeaponBase : WeaponDefinition
 	{
@@ -21,9 +20,11 @@ namespace WeaponsOverhaul
 
 		//gun.IsShooting || TerminalShootOnce.Value || TerminalShooting.Value || ManualShooting.Value;
 		public bool IsShooting => (State.Value & WeaponState.AIShoot) == WeaponState.AIShoot ||
-						(State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot || 
-						(State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot || 
+						(State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
+						(State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
 						(State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce;
+
+		public bool IsAnimated => MuzzleFlashActive; // add barrel rotation at some point
 
 		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
 		public bool IsReloading => (State.Value & WeaponState.Reloading) == WeaponState.Reloading;
@@ -38,6 +39,9 @@ namespace WeaponsOverhaul
 		protected int CurrentShotInBurst = 0;
 		protected float CurrentIdleReloadTime = 0;
 		protected DateTime LastShootTime;
+
+		protected bool MuzzleFlashActive;
+		protected float MuzzleFlashCurrentTime;
 
 		public WeaponControlLayer ControlLayer { get; private set; }
 		public MyCubeBlock CubeBlock { get; private set; }
@@ -98,7 +102,7 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		private void StateChanged(WeaponState o, WeaponState n) 
+		private void StateChanged(WeaponState o, WeaponState n)
 		{
 			bool shooting = IsShooting;
 			bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
@@ -112,7 +116,7 @@ namespace WeaponsOverhaul
 				{
 					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
 				}
-				else
+				else if (!IsAnimated)
 				{
 					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
 				}
@@ -171,7 +175,11 @@ namespace WeaponsOverhaul
 			// stop looping if not shooting
 			if (!IsShooting)
 			{
-				ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				if (!IsAnimated)
+				{
+					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				}
+					
 				return;
 			}
 
@@ -253,6 +261,8 @@ namespace WeaponsOverhaul
 					//apply recoil
 					if (ammo.BackkickForce > 0)
 					{
+						//CubeBlock.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, -direction * ammo.BackkickForce, CubeBlock.WorldMatrix.Translation, Vector3.Zero);
+
 						//Core.PhysicsRequests.Enqueue(new PhysicsDefinition {
 						//	Target = CubeBlock,
 						//	Force = -direction * ammo.BackkickForce,
@@ -269,13 +279,13 @@ namespace WeaponsOverhaul
 					{
 						MatrixD matrix = MatrixD.CreateFromDir(direction);
 						matrix.Translation = origin;
-						if (muzzleFlash == null || muzzleFlash.IsStopped)
+
+						bool foundParticle = MyParticlesManager.TryCreateParticleEffect(MuzzleFlashSpriteName, ref matrix, ref origin, uint.MaxValue, out muzzleFlash);
+						if (foundParticle)
 						{
-							bool foundParticle = MyParticlesManager.TryCreateParticleEffect(MuzzleFlashSpriteName, ref matrix, ref origin, uint.MaxValue, out muzzleFlash);
-							if (foundParticle)
-							{
-								muzzleFlash.Play();
-							}
+							MuzzleFlashActive = true;
+							MuzzleFlashCurrentTime = 0;
+							muzzleFlash.Play();
 						}
 					}
 
@@ -307,102 +317,6 @@ namespace WeaponsOverhaul
 				Notify = notify;
 			}
 		}
-
-		/// <summary>
-		/// Second call in the update loop
-		/// Handles spawning projectiles
-		/// </summary>
-		//public virtual void Spawn()
-		//{
-		//	//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
-		//	//{
-		//	//	MyAPIGateway.Utilities.ShowNotification($"Deviation Index: {DeviationIndex.Value} MFTime: {(MuzzleFlashLifeSpan/1000f).ToString("n2")} MFCurrent: {muzzleFlash?.GetElapsedTime().ToString("n2")}", 1);
-		//	//}
-
-		//	if (TimeTillNextShot >= 1 && WillFireThisFrame)
-		//	{
-		//		// Fixed guns do not update unless the mouse is pressed.
-		//		// This updates the position when terminal fire is active.
-		//		if (IsFixedGun)
-		//		{
-		//			MyEntitySubpart subpart;
-		//			if (Entity.Subparts.TryGetValue("Barrel", out subpart))
-		//			{
-		//				gun.GunBase.WorldMatrix = subpart.PositionComp.WorldMatrixRef;
-		//			}
-		//		}
-
-		//		MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
-		//		Vector3 direction = muzzleMatrix.Forward;
-		//		Vector3D origin = muzzleMatrix.Translation;
-		//		string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
-		//		AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
-
-		//		while (TimeTillNextShot >= 1)
-		//		{
-		//			// calculate deviation
-		//			sbyte index = DeviationIndex.Value;
-		//			MatrixD positionMatrix = Matrix.CreateWorld(origin, Tools.ApplyDeviation(direction, DeviateShotAngle, ref index), muzzleMatrix.Up);
-		//			DeviationIndex.SetValue(index, SyncType.None);
-
-		//			// spawn projectile
-		//			Projectile bullet = new Projectile(Entity.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);
-		//			Core.SpawnProjectile(bullet);
-		//			gun.GunBase.ConsumeAmmo();
-		//			TimeTillNextShot--;
-
-		//			//apply recoil
-		//			if (ammo.BackkickForce > 0)
-		//			{
-		//				Core.PhysicsRequests.Enqueue(new PhysicsDefinition {
-		//					Target = Entity,
-		//					Force = -direction * ammo.BackkickForce,
-		//					Position = Entity.WorldMatrix.Translation
-		//				});
-		//			}
-
-		//			// create sound
-		//			StartShootSound();
-		//			//MakeSecondaryShotSound();
-
-		//			// create muzzle flash
-		//			if (!MyAPIGateway.Utilities.IsDedicated && Settings.Static.DrawMuzzleFlash)
-		//			{
-		//				MatrixD matrix = MatrixD.CreateFromDir(direction);
-		//				matrix.Translation = origin;
-		//				if (muzzleFlash == null || muzzleFlash.IsStopped)
-		//				{
-		//					bool foundParticle = MyParticlesManager.TryCreateParticleEffect(MuzzleFlashSpriteName, ref matrix, ref origin, uint.MaxValue, out muzzleFlash);
-		//					if (foundParticle)
-		//					{
-		//						muzzleFlash.Play();
-		//					}
-		//				}
-		//			}
-
-		//			CurrentShotInBurst++;
-		//			if (AmmoData.ShotsInBurst == 0)
-		//			{
-		//				CurrentShotInBurst = 0;
-		//			}
-		//			else if (CurrentShotInBurst == AmmoData.ShotsInBurst)
-		//			{
-		//				TimeTillNextShot = 0;
-		//				CurrentShotInBurst = 0;
-		//				CurrentReloadTime.Value = ReloadTime;
-		//				DeviationIndex.Push();
-		//				TerminalShootOnce.SetValue(false, SyncType.None);
-		//				break;
-		//			}
-
-		//			if (TerminalShootOnce.Value)
-		//			{
-		//				TerminalShootOnce.SetValue(false, SyncType.None);
-		//				return;
-		//			}
-		//		}
-		//	}
-		//}
 
 		public void StartShootSound()
 		{
@@ -439,23 +353,25 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Animate()
 		{
+			if (MyAPIGateway.Utilities.IsDedicated || !IsAnimated)
+				return;
 
-			if (!MyAPIGateway.Utilities.IsDedicated && Settings.Static.DrawMuzzleFlash)
+			if (Settings.Static.DrawMuzzleFlash && muzzleFlash != null)
 			{
-				if (muzzleFlash != null)
+				MuzzleFlashCurrentTime += Tools.Tick;
+
+				MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
+				Vector3 direction = muzzleMatrix.Forward;
+				Vector3D origin = muzzleMatrix.Translation;
+
+				MatrixD matrix = MatrixD.CreateFromDir(direction);
+				matrix.Translation = origin;
+				muzzleFlash.WorldMatrix = matrix;
+
+				if (MuzzleFlashCurrentTime * 1000 > MuzzleFlashLifeSpan)
 				{
-					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
-					Vector3 direction = muzzleMatrix.Forward;
-					Vector3D origin = muzzleMatrix.Translation;
-
-					MatrixD matrix = MatrixD.CreateFromDir(direction);
-					matrix.Translation = origin;
-					muzzleFlash.WorldMatrix = matrix;
-
-					if (muzzleFlash.GetElapsedTime() > MuzzleFlashLifeSpan * 0.001f)
-					{
-						muzzleFlash.Stop();
-					}
+					muzzleFlash.Stop(true);
+					MuzzleFlashActive = false;
 				}
 			}
 		}

@@ -93,7 +93,7 @@ namespace WeaponsOverhaul
 
 		public override void UpdateBeforeSimulation()
 		{
-			Weapon.Update();	
+			Weapon.Update();
 		}
 
 		public override void UpdateAfterSimulation() 

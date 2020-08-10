@@ -180,12 +180,13 @@ namespace WeaponsOverhaul
 		{
 			Type ammoType = typeof(AmmoDefinition);
 			foreach (AmmoDefinition def in KeenAmmoDefinitions)
-			{ 
-				if (FileExistsInWorldStorage(def.SubtypeId, ammoType))
+			{
+				string filename = $"Ammo_{def.SubtypeId}";
+				if (FileExistsInWorldStorage(filename, ammoType))
 				{
 					try
 					{
-						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(def.SubtypeId, ammoType);
+						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(filename, ammoType);
 						AmmoDefinition a = MyAPIGateway.Utilities.SerializeFromXML<AmmoDefinition>(r.ReadToEnd());
 						r.Close();
 
@@ -203,14 +204,17 @@ namespace WeaponsOverhaul
 				}
 			}
 
+
 			Type weaponType = typeof(WeaponDefinition);
 			foreach (WeaponDefinition def in KeenWeaponDefinitions)
 			{
-				if (FileExistsInWorldStorage(def.SubtypeId, weaponType))
+
+				string filename = $"Weapon_{def.SubtypeId}";
+				if (FileExistsInWorldStorage(filename, weaponType))
 				{
 					try
 					{
-						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(def.SubtypeId, weaponType);
+						TextReader r = MyAPIGateway.Utilities.ReadFileInWorldStorage(filename, weaponType);
 						WeaponDefinition w = MyAPIGateway.Utilities.SerializeFromXML<WeaponDefinition>(r.ReadToEnd());
 						r.Close();
 
@@ -257,14 +261,16 @@ namespace WeaponsOverhaul
 						AmmoDefinition a = AmmoDefinition.CreateFromKeenDefinition(ammo as MyProjectileAmmoDefinition);
 						KeenAmmoDefinitions.Add(a);
 
-						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(a.SubtypeId, ammoType))
+						string filename = $"Ammo_{a.SubtypeId}";
+
+						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(filename, ammoType))
 						{
 							try
 							{
 								AmmoDefinition ca = a.Clone();
 								ca.Enabled = false;
 
-								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(ca.SubtypeId, ammoType);
+								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(filename, ammoType);
 								writer.Write(MyAPIGateway.Utilities.SerializeToXML(ca));
 								writer.Close();
 
@@ -306,14 +312,16 @@ namespace WeaponsOverhaul
 						WeaponDefinition w = WeaponDefinition.CreateFromKeenDefinition(weaponDef);
 						KeenWeaponDefinitions.Add(w);
 
-						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(w.SubtypeId, weaponType))
+						string filename = $"Weapon_{w.SubtypeId}";
+
+						if (Static.WriteDefaultDefinitionsToFile && !FileExistsInWorldStorage(filename, weaponType))
 						{
 							try
 							{
 								WeaponDefinition cw = w.Clone();
 								cw.Enabled = false;
 
-								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(w.SubtypeId, weaponType);
+								TextWriter writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(filename, weaponType);
 								writer.Write(MyAPIGateway.Utilities.SerializeToXML(cw));
 								writer.Close();
 

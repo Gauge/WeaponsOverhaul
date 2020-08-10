@@ -2,6 +2,7 @@
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using VRageMath;
+using WeaponsOverhaul.Definitions;
 
 namespace WeaponsOverhaul
 {
@@ -62,6 +63,9 @@ namespace WeaponsOverhaul
 		[ProtoMember(120)]
 		public int ProjectileCount;
 
+		[ProtoMember(130)]
+		public RicochetDefinition Ricochet;
+
 		public void Copy(AmmoDefinition a)
 		{
 			SubtypeId = a.SubtypeId;
@@ -81,6 +85,8 @@ namespace WeaponsOverhaul
 			ProjectileHealthDamage = a.ProjectileHealthDamage;
 			ProjectileHeadShotDamage = a.ProjectileHeadShotDamage;
 			ProjectileCount = a.ProjectileCount;
+
+			Ricochet = Ricochet.Clone();
 		}
 
 		public AmmoDefinition Clone()
@@ -104,6 +110,7 @@ namespace WeaponsOverhaul
 				ProjectileHealthDamage = ProjectileHealthDamage,
 				ProjectileHeadShotDamage = ProjectileHeadShotDamage,
 				ProjectileCount = ProjectileCount,
+				Ricochet = Ricochet.Clone(),
 			};
 		}
 
@@ -128,6 +135,13 @@ namespace WeaponsOverhaul
 				ProjectileHealthDamage = p.ProjectileHealthDamage,
 				ProjectileHeadShotDamage = p.ProjectileHeadShotDamage,
 				ProjectileCount = p.ProjectileCount,
+
+				Ricochet = new RicochetDefinition() {
+					DeflectionAngle = 45,
+					MaxVelocityTransfer = 0.5f,
+					MaxDamageTransfer = 0.5f,
+					RicochetChance = 1,
+				},
 			};
 		}
 

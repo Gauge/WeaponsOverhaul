@@ -19,9 +19,6 @@ namespace WeaponsOverhaul
 	{
 
 		#region setup
-		//public static ConcurrentQueue<DamageDefinition> DamageRequests = new ConcurrentQueue<DamageDefinition>();
-		//public static ConcurrentQueue<PhysicsDefinition> PhysicsRequests = new ConcurrentQueue<PhysicsDefinition>();
-
 		public const ushort ModId = 12144;
 		public const string ModName = "WeaponsOverhaul";
 		public const string ModKeyword = "/weap";
@@ -36,8 +33,6 @@ namespace WeaponsOverhaul
 		private static IMyLargeTurretBase ActiveTurret;
 		private static SerializableDefinitionId SelectedDefinitionId;
 		private static List<WeaponBase> GridWeapons = new List<WeaponBase>();
-
-
 
 		public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
 		{
@@ -286,9 +281,8 @@ namespace WeaponsOverhaul
 
 			for (int i = 0; i < projectileCount; i++)
 			{
-				Projectile p = Projectiles[i];
-				p.Update();
-				if (p.Expired)
+				Projectiles[i].Update();
+				if (Projectiles[i].Expired)
 				{
 					int newIndex = projectileCount - 1;
 					if (newIndex != i)

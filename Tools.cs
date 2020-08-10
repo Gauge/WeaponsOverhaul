@@ -18,10 +18,12 @@ namespace WeaponsOverhaul
 		public const float MinutesToMilliseconds = 1f / 60f / 1000f;
 		public const float TicksToMilliseconds = 1f / TimeSpan.TicksPerMillisecond;
 
+		public static Random Random = new Random();
+
 		public static T CastProhibit<T>(T ptr, object val) => (T)val;
 
 		public static float MaxSpeedLimit => ((MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed > MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) ?
-MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) + 10;
+			MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitionManager.Static.EnvironmentDefinition.SmallShipMaxSpeed) + 10;
 
 		public static bool DebugMode = false;
 		private const string Prefix = "[WeaponsOverhaul] ";
@@ -60,6 +62,24 @@ MyDefinitionManager.Static.EnvironmentDefinition.LargeShipMaxSpeed : MyDefinitio
 				mult = 1 + (1 - mult);
 			}
 			return mult;
+		}
+
+		public static double AngleBetween(Vector3D norm1, Vector3D norm2)
+		{
+			float ratio = Vector3.Dot(norm1, norm2);
+
+			double theta;
+
+			if (ratio < 0)
+			{
+				theta = Math.PI - 2.0 * Math.Asin((-norm1 - norm2).Length() / 2.0);
+			}
+			else
+			{
+				theta = 2.0 * Math.Asin((norm1 - norm2).Length() / 2.0);
+			}
+
+			return theta * 180 / Math.PI;
 		}
 
 		private const int Seed = 5366354;
