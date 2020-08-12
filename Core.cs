@@ -27,6 +27,7 @@ namespace WeaponsOverhaul
 
 		private static bool DisplayNotification;
 		private long LastNotification;
+		private bool IsNotificationInitialized;
 
 		public static long ControlledGridId;
 		private static IMyShipController ActiveShipController;
@@ -38,6 +39,8 @@ namespace WeaponsOverhaul
 		{
 			NetworkAPI.LogNetworkTraffic = false;
 			Tools.DebugMode = true;
+
+			IsNotificationInitialized = MyAPIGateway.Utilities.IsDedicated;
 
 			if (!NetworkAPI.IsInitialized)
 			{
@@ -64,11 +67,14 @@ namespace WeaponsOverhaul
 			Settings.Load();
 		}
 
-		public override void BeforeStart()
-		{
-			MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
-			Changed(null, MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntity);
-		}
+		//public override void BeforeStart()
+		//{
+		//	if (MyAPIGateway.Utilities.IsDedicated)
+		//		return;
+
+		//	MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
+		//	Changed(null, MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntity);
+		//}
 
 		private void Changed(VRage.Game.ModAPI.Interfaces.IMyControllableEntity o, VRage.Game.ModAPI.Interfaces.IMyControllableEntity n)
 		{
@@ -272,6 +278,16 @@ namespace WeaponsOverhaul
 			if (Tools.DebugMode && !MyAPIGateway.Utilities.IsDedicated)
 			{
 				MyAPIGateway.Utilities.ShowNotification($"Total Projectiles: {projectileCount}", 1);
+			}
+
+			if (!IsNotificationInitialized && MyAPIGateway.Session?.LocalHumanPlayer != null)
+			{
+				Tools.Debug($"Controller: {MyAPIGateway.Session?.LocalHumanPlayer?.Controller != null}");
+				Tools.Debug($"Entity: {MyAPIGateway.Session?.LocalHumanPlayer?.Controller?.ControlledEntity != null}");
+
+				MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
+				Changed(null, MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntity);
+				IsNotificationInitialized = true;
 			}
 
 			if (DisplayNotification)
