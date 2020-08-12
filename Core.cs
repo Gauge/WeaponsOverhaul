@@ -67,15 +67,6 @@ namespace WeaponsOverhaul
 			Settings.Load();
 		}
 
-		//public override void BeforeStart()
-		//{
-		//	if (MyAPIGateway.Utilities.IsDedicated)
-		//		return;
-
-		//	MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntityChanged += Changed;
-		//	Changed(null, MyAPIGateway.Session.LocalHumanPlayer.Controller.ControlledEntity);
-		//}
-
 		private void Changed(VRage.Game.ModAPI.Interfaces.IMyControllableEntity o, VRage.Game.ModAPI.Interfaces.IMyControllableEntity n)
 		{
 
