@@ -28,7 +28,7 @@ namespace WeaponsOverhaul
 
 		public Vector3D Position;
 
-		private bool DrawFullTracer;
+		public bool DrawFullTracer;
 
 		public Projectile(Vector3D origin, Vector3 direction, Vector3D startVelocity, AmmoDefinition ammo, long shooterId) 
 		{

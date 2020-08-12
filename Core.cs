@@ -37,7 +37,7 @@ namespace WeaponsOverhaul
 
 		public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
 		{
-			NetworkAPI.LogNetworkTraffic = false;
+			NetworkAPI.LogNetworkTraffic = true;
 			Tools.DebugMode = true;
 
 			IsNotificationInitialized = MyAPIGateway.Utilities.IsDedicated;
@@ -49,6 +49,7 @@ namespace WeaponsOverhaul
 
 			NetSettings = new NetSync<Settings>(this, TransferType.ServerToClient, Settings.Static);
 			NetSettings.ValueChangedByNetwork += UpdateSettings;
+			//NetSettings.BeforeFetchRequestResponse += SettingsRequest;
 
 			if (!MyAPIGateway.Session.IsServer)
 			{
@@ -65,7 +66,16 @@ namespace WeaponsOverhaul
 			}
 
 			Settings.Load();
+			NetSettings.Value = Settings.Static;
 		}
+
+		//private void SettingsRequest(ulong steamid)
+		//{
+		//	NetSettings.SetValue(Settings.Static);
+
+		//	Tools.Debug(MyAPIGateway.Utilities.SerializeToXML(Settings.Static));
+
+		//}
 
 		private void Changed(VRage.Game.ModAPI.Interfaces.IMyControllableEntity o, VRage.Game.ModAPI.Interfaces.IMyControllableEntity n)
 		{
@@ -155,6 +165,8 @@ namespace WeaponsOverhaul
 		public void UpdateSettings(Settings o, Settings n, ulong steamId)
 		{
 			Settings.SetUserDefinitions(n);
+
+			Tools.Debug(MyAPIGateway.Utilities.SerializeToXML(n));
 		}
 
 		public void HandleInputs()

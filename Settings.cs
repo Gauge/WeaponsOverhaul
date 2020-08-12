@@ -31,10 +31,10 @@ namespace WeaponsOverhaul
 		public List<string> Blacklist = new List<string>();
 
 		[ProtoMember(31)]
-		private List<AmmoDefinition> AmmoDefinitions = new List<AmmoDefinition>();
+		public List<AmmoDefinition> AmmoDefinitions = new List<AmmoDefinition>();
 
 		[ProtoMember(32)]
-		private List<WeaponDefinition> WeaponDefinitions = new List<WeaponDefinition>();
+		public List<WeaponDefinition> WeaponDefinitions = new List<WeaponDefinition>();
 
 		private static List<AmmoDefinition> KeenAmmoDefinitions = new List<AmmoDefinition>();
 		private static List<WeaponDefinition> KeenWeaponDefinitions = new List<WeaponDefinition>();
@@ -238,6 +238,8 @@ namespace WeaponsOverhaul
 		/// </summary>
 		private static void LoadKeenDefinitions()
 		{
+			KeenAmmoDefinitions.Clear();
+			KeenWeaponDefinitions.Clear();
 			Type ammoType = typeof(AmmoDefinition);
 			Type weaponType = typeof(WeaponDefinition);
 			foreach (MyDefinitionBase def in MyDefinitionManager.Static.GetAllDefinitions())

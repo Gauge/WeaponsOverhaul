@@ -16,10 +16,11 @@ namespace WeaponsOverhaul.Definitions
 	public class RicochetDefinition : ICollision
 	{
 
+        [ProtoMember(1)]
         public bool Enabled { get; set; }
 
         private float deflectionAngle;
-        [ProtoMember(1)]
+        [ProtoMember(2)]
         public float DeflectionAngle
         {
             get { return deflectionAngle; }
@@ -41,7 +42,7 @@ namespace WeaponsOverhaul.Definitions
         }
 
         private float maxVelocityTransfer;
-        [ProtoMember(2)]
+        [ProtoMember(3)]
         public float MaxVelocityTransfer
         {
             get { return maxVelocityTransfer; }
@@ -63,7 +64,7 @@ namespace WeaponsOverhaul.Definitions
         }
 
         private float maxDamageTransfer;
-        [ProtoMember(3)]
+        [ProtoMember(4)]
         public float MaxDamageTransfer
         {
             get { return maxDamageTransfer; }
@@ -85,7 +86,7 @@ namespace WeaponsOverhaul.Definitions
         }
 
         private float ricochetChance;
-        [ProtoMember(4)]
+        [ProtoMember(5)]
         public float RicochetChance
         {
             get { return ricochetChance; }
@@ -109,6 +110,7 @@ namespace WeaponsOverhaul.Definitions
         public RicochetDefinition Clone()
         {
             return new RicochetDefinition {
+                Enabled = Enabled,
                 DeflectionAngle = DeflectionAngle,
                 MaxDamageTransfer = MaxDamageTransfer,
                 MaxVelocityTransfer = MaxVelocityTransfer,
@@ -118,16 +120,13 @@ namespace WeaponsOverhaul.Definitions
 
         public void Check(Projectile p)
         {
-            //base.Check(p);
-
             Vector3D End = p.Position + p.Velocity * Tools.Tick;
-
-           
 
             IHitInfo hit;
             MyAPIGateway.Physics.CastRay(p.Position, End, out hit);
             if (hit != null)
             {
+                Tools.Debug($"----- ricochet check start -----");
                 if (hit.HitEntity is IMyDestroyableObject)
                 {
                     p.Expired = true;
@@ -135,13 +134,14 @@ namespace WeaponsOverhaul.Definitions
                 }
                 else if (hit.HitEntity is IMyCubeGrid)
                 {
+                    Tools.Debug($"hit cube grid");
                     IMyCubeGrid grid = hit.HitEntity as IMyCubeGrid;
 
                     Vector3I? hitPos = grid.RayCastBlocks(hit.Position, hit.Position + Vector3D.Normalize(p.Velocity)); // p.Direction
                     if (hitPos.HasValue)
                     {
+                        Tools.Debug($"hit block");
                         IMySlimBlock block = grid.GetCubeBlock(hitPos.Value);
-
 
                         Vector3 hitObjectVelocity = Vector3.Zero;
                         if (hit.HitEntity.Physics != null)
@@ -158,7 +158,7 @@ namespace WeaponsOverhaul.Definitions
 
                         if (HitAngle < DeflectionAngle && RicochetChance > random)
                         {
-                            Tools.Debug($"Angle {HitAngle} < {DeflectionAngle}");
+                            Tools.Debug($"angle {HitAngle} < {DeflectionAngle}");
                             // Apply impulse
                             float impulse = p.Ammo.ProjectileHitImpulse * NotHitFraction * MaxVelocityTransfer;
                             if (hit.HitEntity.Physics != null)
@@ -184,6 +184,7 @@ namespace WeaponsOverhaul.Definitions
                             p.Direction = Vector3D.Normalize(p.Velocity);
                             p.Position = hit.Position + (p.Direction * 0.5f);
                             p.Origin = p.Position;
+                            p.DrawFullTracer = false;
 
                             //if (!MyAPIGateway.Utilities.IsDedicated)
                             //{
@@ -205,6 +206,7 @@ namespace WeaponsOverhaul.Definitions
                         }
                         else
                         {
+                            Tools.Debug($"obsorb damage");
                             if (block != null && MyAPIGateway.Session.IsServer)
                             {
                                 block.DoDamage(p.Ammo.ProjectileMassDamage, MyStringHash.GetOrCompute(p.Ammo.SubtypeId), true);
@@ -214,6 +216,8 @@ namespace WeaponsOverhaul.Definitions
                         }
                     }
                 }
+
+                Tools.Debug($"----- ricochet check end -----");
             }
         }
 	}

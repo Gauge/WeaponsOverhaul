@@ -86,7 +86,7 @@ namespace WeaponsOverhaul
 			ProjectileHeadShotDamage = a.ProjectileHeadShotDamage;
 			ProjectileCount = a.ProjectileCount;
 
-			Ricochet = Ricochet.Clone();
+			Ricochet = a.Ricochet;
 		}
 
 		public AmmoDefinition Clone()
@@ -117,7 +117,6 @@ namespace WeaponsOverhaul
 		public static AmmoDefinition CreateFromKeenDefinition(MyProjectileAmmoDefinition p)
 		{
 			return new AmmoDefinition {
-				Enabled = true,
 				SubtypeId = p.Id.SubtypeId.String,
 				DesiredSpeed = p.DesiredSpeed,
 				SpeedVariance = p.SpeedVar,
