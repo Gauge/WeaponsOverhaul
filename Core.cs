@@ -15,7 +15,7 @@ using WeaponsOverhaul.Definitions;
 namespace WeaponsOverhaul
 {
 	[MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
-	public class Core : MyNetworkSessionComponent
+	public class Core : MySessionComponentBase
 	{
 
 		#region setup
@@ -53,13 +53,13 @@ namespace WeaponsOverhaul
 
 			if (!MyAPIGateway.Session.IsServer)
 			{
-				Network.RegisterChatCommand("load", (args) => Network.SendCommand("load"));
+				NetworkAPI.Instance.RegisterChatCommand("load", (args) => NetworkAPI.Instance.SendCommand("load"));
 			}
 			else
 			{
-				Network.RegisterNetworkCommand("load", ServerCallback_Load);
+				NetworkAPI.Instance.RegisterNetworkCommand("load", ServerCallback_Load);
 
-				Network.RegisterChatCommand("load", (args) => {
+				NetworkAPI.Instance.RegisterChatCommand("load", (args) => {
 					Settings.Load();
 					NetSettings.Value = Settings.Static;
 				});
@@ -248,7 +248,7 @@ namespace WeaponsOverhaul
 		protected override void UnloadData()
 		{
 			Static = null;
-			Network.Close();
+			NetworkAPI.Instance.Close();
 		}
 		#endregion
 

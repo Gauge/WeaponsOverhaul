@@ -1,9 +1,11 @@
 ﻿using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.EntityComponents;
 using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using SENetworkAPI;
 using System;
+using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Library.Utils;
@@ -11,7 +13,7 @@ using VRageMath;
 
 namespace WeaponsOverhaul
 {
-	public enum WeaponState { None = 0, Reloading = 1, ManualShoot = 2, AIShoot = 4, TerminalShoot = 8, TerminalShootOnce = 16 }
+	public enum WeaponState { None = 0, /*Reloading = 1,*/ ManualShoot = 2, AIShoot = 4, TerminalShoot = 8, TerminalShootOnce = 16 }
 
 	public class WeaponBase : WeaponDefinition
 	{
@@ -27,13 +29,14 @@ namespace WeaponsOverhaul
 		public bool IsAnimated => MuzzleFlashActive; // add barrel rotation at some point
 
 		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
-		public bool IsReloading => (State.Value & WeaponState.Reloading) == WeaponState.Reloading;
+		public bool IsReloading => Reloading.Value;//(State.Value & WeaponState.Reloading) == WeaponState.Reloading;
 		public bool IsAIShooting => (State.Value & WeaponState.AIShoot) == WeaponState.AIShoot;
 		public bool IsManualShooting => (State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot;
 		public bool IsTerminalShooting => (State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
 		public bool IsTerminalShootOnce => (State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce;
 
 		public NetSync<WeaponState> State;
+		protected NetSync<bool> Reloading;
 		protected NetSync<sbyte> DeviationIndex;
 
 		protected int CurrentShotInBurst = 0;
@@ -52,6 +55,9 @@ namespace WeaponsOverhaul
 		protected MyEntity3DSoundEmitter PrimaryEmitter;
 		protected MyEntity3DSoundEmitter SecondaryEmitter;
 
+		//protected MyGridTargeting Targeting;
+		protected MyEntity Target;
+
 		//protected static SerializableDefinitionId SelectedWeapon;
 		public MyDefinitionId WeaponDefinition;
 
@@ -64,13 +70,10 @@ namespace WeaponsOverhaul
 		{
 			ControlLayer = layer;
 			CubeBlock = (MyCubeBlock)layer.Entity;
+			//Targeting = ;
 			Block = CubeBlock as IMyFunctionalBlock;
 			gun = CubeBlock as IMyGunObject<MyGunBase>;
 			IsFixedGun = CubeBlock is IMySmallGatlingGun;
-
-			State = new NetSync<WeaponState>(ControlLayer, TransferType.Both, WeaponState.None);
-			State.ValueChanged += StateChanged;
-			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
 
 			PrimaryEmitter = new MyEntity3DSoundEmitter(CubeBlock, useStaticList: true);
 			SecondaryEmitter = new MyEntity3DSoundEmitter(CubeBlock, useStaticList: true);
@@ -129,6 +132,11 @@ namespace WeaponsOverhaul
 		public virtual void Start()
 		{
 			WeaponDefinition = CubeBlock.BlockDefinition.Id;
+
+			State = new NetSync<WeaponState>(ControlLayer, TransferType.Both, WeaponState.None);
+			State.ValueChanged += StateChanged;
+			Reloading = new NetSync<bool>(ControlLayer, TransferType.ServerToClient, false);
+			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
 		}
 
 		/// <summary>
@@ -147,24 +155,42 @@ namespace WeaponsOverhaul
 			InitializeSound();
 		}
 
-		//protected void HandleInputs()
-		//{
-		//	if (Block.CubeGrid.EntityId != Notifications.ControlledGridId || Notifications.SelectedDefinition != WeaponDefinition)
-		//		return;
+		private void test() 
+		{
+			try
+			{
+				List<MyEntity> targets = CubeBlock.CubeGrid.Components.Get<MyGridTargeting>().TargetRoots;
 
-		//	if (MyAPIGateway.Gui.IsCursorVisible)
-		//		return;
+				if (targets.Count > 0)
+				{
+					Target = targets[0];
 
-		//	if (MyAPIGateway.Input.IsNewPrimaryButtonPressed())
-		//	{
-		//		ManualShooting.Value = true;
-		//	}
+				}
+			}
+			catch 
+			{ }
+		}
 
-		//	if (MyAPIGateway.Input.IsNewPrimaryButtonReleased())
-		//	{
-		//		ManualShooting.Value = false;
-		//	}
-		//}
+		bool unknownIdleElevation = true;
+		float idleAzimuth = 0;
+		float idleElevation = 0;
+
+		private Vector3 LookAt(Vector3D target)
+		{
+			float azimuth = 0;
+			float elevation = 0;
+
+			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
+			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out azimuth, out elevation);
+			if (unknownIdleElevation)
+			{
+				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
+				unknownIdleElevation = false;
+			}
+			return new Vector3(elevation - idleElevation, MathHelper.WrapAngle(azimuth - idleAzimuth), 0f);
+		}
+
+
 
 		/// <summary>
 		/// First call in the update loop
@@ -172,6 +198,20 @@ namespace WeaponsOverhaul
 		/// </summary>
 		public virtual void Update()
 		{
+			//if (CubeBlock is IMyLargeTurretBase)
+			//{
+			//	if (Target == null)
+			//	{
+			//		test();
+			//	}
+
+			//	MyAPIGateway.Utilities.ShowNotification($"Target: {Target != null}",1);
+
+			//	LookAt(Target.PositionComp.GetPosition());
+			//}
+
+			//CubeBlock.DoUpdateTimerTick();
+
 			// stop looping if not shooting
 			if (!IsShooting)
 			{
@@ -192,13 +232,14 @@ namespace WeaponsOverhaul
 			//	MyAPIGateway.Utilities.ShowNotification($"ShootTime: {timeSinceLastShot.ToString("n0")}ms - {State.Value} - {IsShooting} - {IsReloading} - {(timeSinceLastShot * (AmmoData.RateOfFire * Tools.MinutesToMilliseconds)).ToString("n2")} {CurrentShotInBurst}/{AmmoData.ShotsInBurst}", 1);
 			//}
 
-			// Stops if weapons are reloading
-			if (IsReloading)
+				// Stops if weapons are reloading
+				if (IsReloading)
 			{
 				if (timeSinceLastShot < ReloadTime)
 					return;
 
-				State.Value &= ~WeaponState.Reloading;
+				Reloading.Value = false;
+				//State.Value &= ~WeaponState.Reloading;
 			}
 
 			// Stops if weapons are not ready to fire this frame
@@ -298,13 +339,14 @@ namespace WeaponsOverhaul
 					{
 						notify |= 0x8;
 						CurrentShotInBurst = 0;
-						State.Value |= WeaponState.Reloading;
+						Reloading.Value = true;
+						//State.Value |= WeaponState.Reloading;
 						DeviationIndex.Push();
 					}
 
 					if (IsTerminalShootOnce)
 					{
-						State.Value &= ~WeaponState.TerminalShootOnce;
+						State.SetValue(State.Value & ~WeaponState.TerminalShootOnce);
 					}
 
 					LastShootTime = currentTime;

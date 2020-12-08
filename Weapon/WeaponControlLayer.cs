@@ -32,7 +32,7 @@ namespace WeaponsOverhaul
 	/// <summary>
 	/// Binds keens interface to the custom weapon types
 	/// </summary>
-	public class WeaponControlLayer : MyNetworkGameLogicComponent
+	public class WeaponControlLayer : MyGameLogicComponent
 	{
 		public static bool HijackComplete = false;
 		public WeaponBase Weapon = new WeaponBase();
