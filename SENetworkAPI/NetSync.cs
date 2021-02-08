@@ -214,7 +214,14 @@ namespace SENetworkAPI
 
 			if (SyncOnLoad)
 			{
-				Entity.AddedToScene += SyncOnAddedToScene;
+				if (Entity != null)
+				{
+					Entity.AddedToScene += SyncOnAddedToScene;
+				}
+				else
+				{
+					Fetch();
+				}
 			}
 
 			if (NetworkAPI.LogNetworkTraffic)
@@ -320,8 +327,7 @@ namespace SENetworkAPI
 					return;
 				}
 
-				if (MyAPIGateway.Session.OnlineMode == MyOnlineModeEnum.OFFLINE ||
-					MyAPIGateway.Session.OnlineMode == MyOnlineModeEnum.PRIVATE)
+				if (MyAPIGateway.Session.OnlineMode == MyOnlineModeEnum.OFFLINE)
 				{
 					if (NetworkAPI.LogNetworkTraffic)
 					{
