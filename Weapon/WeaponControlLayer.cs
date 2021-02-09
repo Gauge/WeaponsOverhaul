@@ -2,7 +2,6 @@
 using Sandbox.Definitions;
 using Sandbox.ModAPI;
 using Sandbox.ModAPI.Interfaces.Terminal;
-using SENetworkAPI;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -34,7 +33,10 @@ namespace WeaponsOverhaul
 	/// </summary>
 	public class WeaponControlLayer : MyGameLogicComponent
 	{
-		public static bool HijackComplete = false;
+		public static bool HijackUpdates = false;
+		public static bool HijackSmallGatlingGun = false;
+		public static bool HijackLargeTurretBase = false;
+
 		public WeaponBase Weapon = new WeaponBase();
 		public bool Blacklisted = false;
 		private bool waitframe = true;
@@ -118,26 +120,38 @@ namespace WeaponsOverhaul
 			return Settings.Static.Blacklist.Contains($"{((Entity as IMyCubeBlock).SlimBlock.BlockDefinition as MyWeaponBlockDefinition).WeaponDefinitionId.SubtypeId.String}");
 		}
 
-		public static void HijackSystem()
+		public void HijackSystem()
 		{
-			if (HijackComplete)
-				return;
-
-			Action<MyEntity> old = MyEntitiesInterface.RegisterUpdate;
-			MyEntitiesInterface.RegisterUpdate = (e) =>
+			if (!HijackUpdates)
 			{
-				if (e.GameLogic.GetAs<WeaponControlLayer>() != null && e.NeedsUpdate != MyEntityUpdateEnum.NONE)
-				{
-					e.NeedsUpdate = MyEntityUpdateEnum.NONE;
-				}
+				Tools.Debug($"Hijacking event system");
+				Action<MyEntity> old = MyEntitiesInterface.RegisterUpdate;
+				MyEntitiesInterface.RegisterUpdate = (e) => {
+					if (e.GameLogic.GetAs<WeaponControlLayer>() != null && e.NeedsUpdate != MyEntityUpdateEnum.NONE)
+					{
+						e.NeedsUpdate = MyEntityUpdateEnum.NONE;
+					}
 
-				old?.Invoke(e);
-			};
+					old?.Invoke(e);
+				};
 
-			OverrideDefaultControls<IMySmallGatlingGun>();
-			OverrideDefaultControls<IMyLargeTurretBase>();
+				HijackUpdates = true;
+			}
 
-			HijackComplete = true;
+			
+			if (Entity is IMySmallGatlingGun && !HijackSmallGatlingGun)
+			{
+				Tools.Debug($"Hijacking fixed guns");
+				OverrideDefaultControls<IMySmallGatlingGun>();
+				HijackSmallGatlingGun = true;
+			}
+
+			if (Entity is IMyLargeTurretBase && !HijackLargeTurretBase)
+			{
+				Tools.Debug($"Hijacking turrets");
+				OverrideDefaultControls<IMyLargeTurretBase>();
+				HijackLargeTurretBase = true;
+			}
 		}
 
 		private static void OverrideDefaultControls<T>()
@@ -151,6 +165,7 @@ namespace WeaponsOverhaul
 			MyAPIGateway.TerminalControls.GetActions<T>(out actions);
 			foreach (IMyTerminalAction a in actions)
 			{
+				Tools.Debug($"{a.Id}");
 				if (a.Id == "Shoot")
 				{
 					oldAction = a.Action;
