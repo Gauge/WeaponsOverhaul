@@ -2,7 +2,6 @@
 using Sandbox.ModAPI;
 using SENetworkAPI;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using VRage.Game;
 using VRage.Game.Components;
@@ -10,7 +9,6 @@ using VRage.Game.ModAPI;
 using VRage.Input;
 using VRage.ObjectBuilders;
 using VRageMath;
-using WeaponsOverhaul.Definitions;
 
 namespace WeaponsOverhaul
 {
@@ -248,7 +246,6 @@ namespace WeaponsOverhaul
 		protected override void UnloadData()
 		{
 			Static = null;
-			NetworkAPI.Instance.Close();
 		}
 		#endregion
 
