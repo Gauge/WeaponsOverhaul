@@ -150,5 +150,16 @@ namespace WeaponsOverhaul
 		}
 
 
+		public static float NormalizeAngle(int angle)
+		{
+			int num = angle % 360;
+			if (num == 0 && angle != 0)
+			{
+				return 360f;
+			}
+			return num;
+		}
+
+
 	}
 }

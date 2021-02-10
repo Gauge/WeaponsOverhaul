@@ -3,8 +3,6 @@ using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using System.Xml.Serialization;
-using VRage.Utils;
-using static Sandbox.Definitions.MyWeaponDefinition;
 
 namespace WeaponsOverhaul
 {
@@ -56,6 +54,35 @@ namespace WeaponsOverhaul
 		[ProtoMember(90)]
 		public string SecondarySound;
 
+		[ProtoMember(100)]
+		public bool AiEnabled;
+		[ProtoMember(110)]
+		public int MinElevationDegrees;
+		[ProtoMember(120)]
+		public int MaxElevationDegrees;
+		[ProtoMember(130)]
+		public int MinAzimuthDegrees;
+		[ProtoMember(140)]
+		public int MaxAzimuthDegrees;
+		[ProtoMember(150)]
+		public bool IdleRotation;
+		[ProtoMember(160)]
+		public float MaxRangeMeters;
+		[ProtoMember(170)]
+		public float RotationSpeed;
+		[ProtoMember(180)]
+		public float ElevationSpeed;
+		[ProtoMember(190)]
+		public float MinFov;
+		[ProtoMember(200)]
+		public float MaxFov;
+		[ProtoMember(210)]
+		public int AmmoPullAmount;
+		[ProtoMember(220)]
+		public float InventoryFillFactorMin;
+		[ProtoMember(230)]
+		public float InventoryFillFactorMax;
+
 		[XmlIgnore]
 		public MySoundPair NoAmmoSoundPair;
 		[XmlIgnore]
@@ -81,6 +108,21 @@ namespace WeaponsOverhaul
 				NoAmmoSoundPair = NoAmmoSoundPair,
 				ReloadSoundPair = ReloadSoundPair,
 				SecondarySoundPair = SecondarySoundPair,
+
+				AiEnabled = AiEnabled,
+				MinElevationDegrees = MinElevationDegrees,
+				MaxElevationDegrees = MaxElevationDegrees,
+				MinAzimuthDegrees = MinAzimuthDegrees,
+				MaxAzimuthDegrees = MaxAzimuthDegrees,
+				IdleRotation = IdleRotation,
+				MaxRangeMeters = MaxRangeMeters,
+				RotationSpeed = RotationSpeed,
+				ElevationSpeed = ElevationSpeed,
+				MinFov = MinFov,
+				MaxFov = MaxFov,
+				AmmoPullAmount = AmmoPullAmount,
+				InventoryFillFactorMin = InventoryFillFactorMin,
+				InventoryFillFactorMax = InventoryFillFactorMax,
 			};
 		}
 
@@ -101,27 +143,81 @@ namespace WeaponsOverhaul
 			NoAmmoSoundPair = w.NoAmmoSoundPair;
 			ReloadSoundPair = w.ReloadSoundPair;
 			SecondarySoundPair = w.SecondarySoundPair;
+
+			AiEnabled = w.AiEnabled;
+			MinElevationDegrees = w.MinElevationDegrees;
+			MaxElevationDegrees = w.MaxElevationDegrees;
+			MinAzimuthDegrees = w.MinAzimuthDegrees;
+			MaxAzimuthDegrees = w.MaxAzimuthDegrees;
+			IdleRotation = w.IdleRotation;
+			MaxRangeMeters = w.MaxRangeMeters;
+			RotationSpeed = w.RotationSpeed;
+			ElevationSpeed = w.ElevationSpeed;
+			MinFov = w.MinFov;
+			MaxFov = w.MaxFov;
+			AmmoPullAmount = w.AmmoPullAmount;
+			InventoryFillFactorMin = w.InventoryFillFactorMin;
+			InventoryFillFactorMax = w.InventoryFillFactorMax;
 		}
 
-		public static WeaponDefinition CreateFromKeenDefinition(MyWeaponDefinition w)
+		public static WeaponDefinition CreateFromKeenDefinition(MyWeaponBlockDefinition b, MyWeaponDefinition w)
 		{
-			return new WeaponDefinition {
-				Enabled = true,
-				SubtypeId = w.Id.SubtypeId.String,
-				DeviateShotAngle = w.DeviateShotAngle,
-				ReloadTime = w.ReloadTime,
-				ReleaseTimeAfterFire = w.ReleaseTimeAfterFire,
-				//PhysicalMaterial = w.PhysicalMaterial,
-				MuzzleFlashLifeSpan = w.MuzzleFlashLifeSpan,
-				MuzzleFlashSpriteName = "Muzzle_Flash_Large",
-				NoAmmoSound = w.NoAmmoSound.SoundId.ToString(),
-				ReloadSound = w.ReloadSound.SoundId.ToString(),
-				SecondarySound = w.SecondarySound.SoundId.ToString(),
-				NoAmmoSoundPair = w.NoAmmoSound,
-				ReloadSoundPair = w.ReloadSound,
-				SecondarySoundPair = w.SecondarySound,
-				AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
-			};
+			if (b is MyLargeTurretBaseDefinition)
+			{
+				MyLargeTurretBaseDefinition lb = b as MyLargeTurretBaseDefinition;
+				return new WeaponDefinition {
+					Enabled = true,
+					SubtypeId = w.Id.SubtypeId.String,
+					DeviateShotAngle = w.DeviateShotAngle,
+					ReloadTime = w.ReloadTime,
+					ReleaseTimeAfterFire = w.ReleaseTimeAfterFire,
+					//PhysicalMaterial = w.PhysicalMaterial,
+					MuzzleFlashLifeSpan = w.MuzzleFlashLifeSpan,
+					MuzzleFlashSpriteName = "Muzzle_Flash_Large",
+					NoAmmoSound = w.NoAmmoSound.SoundId.ToString(),
+					ReloadSound = w.ReloadSound.SoundId.ToString(),
+					SecondarySound = w.SecondarySound.SoundId.ToString(),
+					NoAmmoSoundPair = w.NoAmmoSound,
+					ReloadSoundPair = w.ReloadSound,
+					SecondarySoundPair = w.SecondarySound,
+					AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
+
+					AiEnabled = lb.AiEnabled,
+					MinElevationDegrees = lb.MinElevationDegrees,
+					MaxElevationDegrees = lb.MaxElevationDegrees,
+					MinAzimuthDegrees = lb.MinAzimuthDegrees,
+					MaxAzimuthDegrees = lb.MaxAzimuthDegrees,
+					IdleRotation = lb.IdleRotation,
+					MaxRangeMeters = lb.MaxRangeMeters,
+					RotationSpeed = lb.RotationSpeed,
+					ElevationSpeed = lb.ElevationSpeed,
+					MinFov = lb.MinFov,
+					MaxFov = lb.MaxFov,
+					AmmoPullAmount = lb.AmmoPullAmount,
+					InventoryFillFactorMin = lb.InventoryFillFactorMin,
+					InventoryFillFactorMax = lb.InventoryFillFactorMax,
+				};
+			}
+			else
+			{
+				return new WeaponDefinition {
+					Enabled = true,
+					SubtypeId = w.Id.SubtypeId.String,
+					DeviateShotAngle = w.DeviateShotAngle,
+					ReloadTime = w.ReloadTime,
+					ReleaseTimeAfterFire = w.ReleaseTimeAfterFire,
+					//PhysicalMaterial = w.PhysicalMaterial,
+					MuzzleFlashLifeSpan = w.MuzzleFlashLifeSpan,
+					MuzzleFlashSpriteName = "Muzzle_Flash_Large",
+					NoAmmoSound = w.NoAmmoSound.SoundId.ToString(),
+					ReloadSound = w.ReloadSound.SoundId.ToString(),
+					SecondarySound = w.SecondarySound.SoundId.ToString(),
+					NoAmmoSoundPair = w.NoAmmoSound,
+					ReloadSoundPair = w.ReloadSound,
+					SecondarySoundPair = w.SecondarySound,
+					AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
+				};
+			}
 		}
 
 		public override string ToString()
@@ -129,42 +225,5 @@ namespace WeaponsOverhaul
 			return MyAPIGateway.Utilities.SerializeToXML(this);
 		}
 
-	}
-
-	[ProtoContract]
-	public class WeaponAmmoDefinition
-	{
-		[ProtoMember(10)]
-		public int RateOfFire;
-
-		[ProtoMember(20)]
-		public int ShotsInBurst;
-
-		[ProtoMember(30)]
-		public string ShootSound;
-
-		[XmlIgnore]
-		public MySoundPair ShootSoundPair;
-
-		public WeaponAmmoDefinition Clone()
-		{
-			return new WeaponAmmoDefinition {
-				RateOfFire = RateOfFire,
-				ShotsInBurst = ShotsInBurst,
-				ShootSound = ShootSound,
-				ShootSoundPair = ShootSoundPair
-			};
-		}
-
-		public static WeaponAmmoDefinition CreateFromKeenDefinition(MyWeaponAmmoData a)
-		{
-			return new WeaponAmmoDefinition {
-				RateOfFire = a.RateOfFire,
-				ShotsInBurst = a.ShotsInBurst,
-
-				ShootSound = a.ShootSound.SoundId.ToString(),
-				ShootSoundPair = a.ShootSound,
-			};
-		}
 	}
 }

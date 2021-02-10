@@ -16,16 +16,31 @@ namespace WeaponsOverhaul
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_LargeGatlingTurret), false)]
 	public class Turret : WeaponControlLayer
 	{
+		public override void OnAddedToContainer()
+		{
+			Weapon = new TurretBase();
+			base.OnAddedToContainer();
+		}
 	}
 
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_SmallGatlingGun), false)]
 	public class FixedGun : WeaponControlLayer
 	{
+		public override void OnAddedToContainer()
+		{
+			Weapon = new WeaponBase();
+			base.OnAddedToContainer();
+		}
 	}
 
 	[MyEntityComponentDescriptor(typeof(MyObjectBuilder_InteriorTurret), false)]
 	public class InteriorTurret : WeaponControlLayer
 	{
+		public override void OnAddedToContainer()
+		{
+			Weapon = new TurretBase();
+			base.OnAddedToContainer();
+		}
 	}
 
 	/// <summary>
@@ -37,7 +52,7 @@ namespace WeaponsOverhaul
 		public static bool HijackSmallGatlingGun = false;
 		public static bool HijackLargeTurretBase = false;
 
-		public WeaponBase Weapon = new WeaponBase();
+		public WeaponBase Weapon = null;
 		public bool Blacklisted = false;
 		private bool waitframe = true;
 

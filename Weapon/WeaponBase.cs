@@ -15,7 +15,7 @@ namespace WeaponsOverhaul
 {
 	public enum WeaponState { None = 0, /*Reloading = 1,*/ ManualShoot = 2, AIShoot = 4, TerminalShoot = 8, TerminalShootOnce = 16 }
 
-	public class WeaponBase : WeaponDefinition
+	public class WeaponBase : WeaponDefinition, IWeapon
 	{
 		public bool Initialized { get; private set; } = false;
 		public bool IsFixedGun { get; private set; }
@@ -26,7 +26,7 @@ namespace WeaponsOverhaul
 						(State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
 						(State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce;
 
-		public bool IsAnimated => MuzzleFlashActive; // add barrel rotation at some point
+		public bool IsAnimated => MuzzleFlashActive; //TODO: add barrel rotation at some point
 
 		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
 		public bool IsReloading => Reloading.Value;//(State.Value & WeaponState.Reloading) == WeaponState.Reloading;
@@ -54,9 +54,6 @@ namespace WeaponsOverhaul
 		protected MyParticleEffect muzzleFlash;
 		protected MyEntity3DSoundEmitter PrimaryEmitter;
 		protected MyEntity3DSoundEmitter SecondaryEmitter;
-
-		//protected MyGridTargeting Targeting;
-		protected MyEntity Target;
 
 		//protected static SerializableDefinitionId SelectedWeapon;
 		public MyDefinitionId WeaponDefinition;
@@ -107,22 +104,29 @@ namespace WeaponsOverhaul
 
 		private void StateChanged(WeaponState o, WeaponState n)
 		{
-			bool shooting = IsShooting;
-			bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
-				(o & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
-				(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
-				(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
-
-			if (oldshoot != shooting)
+			try
 			{
-				if (shooting)
+				bool shooting = IsShooting;
+				bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
+					(o & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
+					(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
+					(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
+
+				if (oldshoot != shooting)
 				{
-					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
+					if (shooting)
+					{
+						ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
+					}
+					else if (!IsAnimated)
+					{
+						ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+					}
 				}
-				else if (!IsAnimated)
-				{
-					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
-				}
+			}
+			catch (Exception e)
+			{
+				Tools.Error(e.ToString());
 			}
 		}
 
@@ -155,63 +159,12 @@ namespace WeaponsOverhaul
 			InitializeSound();
 		}
 
-		private void test() 
-		{
-			try
-			{
-				List<MyEntity> targets = CubeBlock.CubeGrid.Components.Get<MyGridTargeting>().TargetRoots;
-
-				if (targets.Count > 0)
-				{
-					Target = targets[0];
-
-				}
-			}
-			catch 
-			{ }
-		}
-
-		bool unknownIdleElevation = true;
-		float idleAzimuth = 0;
-		float idleElevation = 0;
-
-		private Vector3 LookAt(Vector3D target)
-		{
-			float azimuth = 0;
-			float elevation = 0;
-
-			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
-			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out azimuth, out elevation);
-			if (unknownIdleElevation)
-			{
-				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
-				unknownIdleElevation = false;
-			}
-			return new Vector3(elevation - idleElevation, MathHelper.WrapAngle(azimuth - idleAzimuth), 0f);
-		}
-
-
-
 		/// <summary>
 		/// First call in the update loop
 		/// Used to update the firing state of this weapon
 		/// </summary>
 		public virtual void Update()
 		{
-			//if (CubeBlock is IMyLargeTurretBase)
-			//{
-			//	if (Target == null)
-			//	{
-			//		test();
-			//	}
-
-			//	MyAPIGateway.Utilities.ShowNotification($"Target: {Target != null}",1);
-
-			//	LookAt(Target.PositionComp.GetPosition());
-			//}
-
-			//CubeBlock.DoUpdateTimerTick();
-
 			// stop looping if not shooting
 			if (!IsShooting)
 			{
@@ -219,7 +172,7 @@ namespace WeaponsOverhaul
 				{
 					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
 				}
-					
+
 				return;
 			}
 
@@ -232,8 +185,8 @@ namespace WeaponsOverhaul
 			//	MyAPIGateway.Utilities.ShowNotification($"ShootTime: {timeSinceLastShot.ToString("n0")}ms - {State.Value} - {IsShooting} - {IsReloading} - {(timeSinceLastShot * (AmmoData.RateOfFire * Tools.MinutesToMilliseconds)).ToString("n2")} {CurrentShotInBurst}/{AmmoData.ShotsInBurst}", 1);
 			//}
 
-				// Stops if weapons are reloading
-				if (IsReloading)
+			// Stops if weapons are reloading
+			if (IsReloading)
 			{
 				if (timeSinceLastShot < ReloadTime)
 					return;
@@ -360,7 +313,7 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		public void StartShootSound()
+		private void StartShootSound()
 		{
 			if (AmmoData.ShootSoundPair == null || PrimaryEmitter == null)
 				return;
@@ -378,7 +331,7 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		public void StartNoAmmoSound()
+		private void StartNoAmmoSound()
 		{
 			if (NoAmmoSoundPair == null || PrimaryEmitter == null)
 				return;

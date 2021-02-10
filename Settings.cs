@@ -311,7 +311,7 @@ namespace WeaponsOverhaul
 							ammoData.ShootIntervalInMiliseconds = int.MaxValue;
 						}
 
-						WeaponDefinition w = WeaponDefinition.CreateFromKeenDefinition(weaponDef);
+						WeaponDefinition w = WeaponDefinition.CreateFromKeenDefinition(block, weaponDef);
 						KeenWeaponDefinitions.Add(w);
 
 						string filename = $"Weapon_{w.SubtypeId}";
