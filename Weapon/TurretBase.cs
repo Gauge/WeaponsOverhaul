@@ -19,6 +19,9 @@ namespace WeaponsOverhaul
 		public float Azimuth;
 		public float Elevation;
 
+		private float AzimuthSpeedPerTick;
+		private float ElevationSpeedPerTick;
+
 		private float MinElevationRadians;
 		private float MaxElevationRadians = MathHelper.Pi * 2f;
 		private float MinAzimuthRadians;
@@ -49,6 +52,19 @@ namespace WeaponsOverhaul
 			{
 				MinAzimuthRadians -= MathHelper.Pi * 2f;
 			}
+
+			ElevationSpeedPerTick = ElevationSpeed * KeenRotationMultiplyer;
+			AzimuthSpeedPerTick = RotationSpeed * KeenRotationMultiplyer;
+
+			if (unknownIdleElevation)
+			{
+				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
+				unknownIdleElevation = false;
+			}
+
+			Azimuth = idleAzimuth;
+			Elevation = idleElevation;
+
 		}
 
 		public override void Update()
@@ -64,13 +80,17 @@ namespace WeaponsOverhaul
 				TargetAcquisition();
 				if (Target != null)
 				{
-					//Target.PositionComp.WorldAABB.Center
-					LookAt(Target.WorldMatrix.Translation);
+					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
+
+					string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
+					AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
+
+					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, Target.Physics.LinearVelocity, Target.PositionComp.GetPosition());
+
+					LookAt(leadPosition);
 				}
 
 				RotateModels();
-
-				MyAPIGateway.Utilities.ShowNotification($"Azimuth: {Azimuth} Elevation: {Elevation}", 1);
 			}
 
 			base.Animate();
@@ -92,50 +112,54 @@ namespace WeaponsOverhaul
 
 			float targetElevation = elev - idleElevation;
 			float targetAzimuth = az - idleAzimuth;
-			float elevationSpeed = ElevationSpeed * KeenRotationMultiplyer;
-			float azimuthSpeed = RotationSpeed * KeenRotationMultiplyer;
-
-			float elevationTravel = MathHelper.Clamp(targetElevation - Elevation, -elevationSpeed, elevationSpeed);
-			float azimuthTravel = MathHelper.Clamp(targetAzimuth - Azimuth, -azimuthSpeed, azimuthSpeed);
 
 			float azimuthAngleDifference = targetAzimuth - Azimuth;
-
-			MyAPIGateway.Utilities.ShowNotification($"azimuthAngleDifference: {azimuthAngleDifference}", 1);
-
+			float azimuthTravel = MathHelper.Clamp(azimuthAngleDifference, -AzimuthSpeedPerTick, AzimuthSpeedPerTick);
 
 			if (Math.Abs(azimuthAngleDifference) < Math.PI)
 				Azimuth += azimuthTravel;
 			else
 				Azimuth -= azimuthTravel;
 
-			Elevation = elevationTravel;
-
-			//if (Azimuth < targetAzimuth)
-			//{
-			//	if (Math.Abs(azimuthAngleDifference) < 180)
-			//		Azimuth += azimuthTravel;
-			//	else
-			//		Azimuth -= azimuthTravel;
-			//}
-			//else
-			//{
-			//	if (Math.Abs(azimuthAngleDifference) < 180)
-			//		Azimuth -= azimuthTravel;
-			//	else
-			//		Azimuth += azimuthTravel;
-			//}
-
-
+			Elevation += MathHelper.Clamp(targetElevation - Elevation, -ElevationSpeedPerTick, ElevationSpeedPerTick);
 			Azimuth = MathHelper.WrapAngle(Azimuth);
 
-			//Elevation = elev - idleElevation;
-			//Azimuth = MathHelper.WrapAngle(az - idleAzimuth);
+			//MyAPIGateway.Utilities.ShowNotification($"Azimuth: {Azimuth.ToString("n3")} Elevation: {Elevation.ToString("n3")} Diff: {azimuthAngleDifference.ToString("n5")}", 1);
+		}
 
+		// Whip's CalculateProjectileInterceptPosition Method
+		// Uses vector math as opposed to the quadratic equation
+		private static Vector3D CalculateProjectileInterceptPosition(
+			double projectileSpeed,
+			Vector3D shooterVelocity,
+			Vector3D shooterPosition,
+			Vector3D targetVelocity,
+			Vector3D targetPos,
+			double interceptPointMultiplier = 1)
+		{
+			var directHeading = targetPos - shooterPosition;
+			var directHeadingNorm = Vector3D.Normalize(directHeading);
 
+			var relativeVelocity = targetVelocity - shooterVelocity;
+
+			var parallelVelocity = relativeVelocity.Dot(directHeadingNorm) * directHeadingNorm;
+			var normalVelocity = relativeVelocity - parallelVelocity;
+
+			var diff = projectileSpeed * projectileSpeed - normalVelocity.LengthSquared();
+			if (diff < 0)
+				return normalVelocity;
+
+			var projectileForwardVelocity = Math.Sqrt(diff) * directHeadingNorm;
+			var timeToIntercept = interceptPointMultiplier * Math.Abs(Vector3D.Dot(directHeading, directHeadingNorm)) / Vector3D.Dot(projectileForwardVelocity, directHeadingNorm);
+
+			return shooterPosition + timeToIntercept * (projectileForwardVelocity + normalVelocity);
 		}
 
 		private void TargetAcquisition()
 		{
+			//target priority
+			//missiles, suits, metior, decoys, closest terminal block
+
 			try
 			{
 				List<MyEntity> targets = Block.CubeGrid.Components.Get<MyGridTargeting>().TargetRoots;
