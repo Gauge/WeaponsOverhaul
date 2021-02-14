@@ -1,4 +1,5 @@
-﻿using Sandbox.Game.EntityComponents;
+﻿using Sandbox.Game.Entities;
+using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,16 @@ namespace WeaponsOverhaul
 {
 	public class TurretBase : WeaponBase, ITurret
 	{
+		public enum TargetFlags : ushort
+		{
+			Meteors = 0x1,
+			Missiles = 0x2,
+			SmallShips = 0x4,
+			LargeShips = 0x8,
+			Characters = 0x10,
+			Stations = 0x20,
+			Neutrals = 0x40
+		}
 
 		public const float KeenRotationMultiplyer = 16f;
 
@@ -35,6 +46,141 @@ namespace WeaponsOverhaul
 		private MyEntitySubpart modelBarrel;
 
 		private MyEntity Target;
+
+		private TargetFlags TargetMode = TargetFlags.LargeShips & TargetFlags.SmallShips & TargetFlags.Characters & TargetFlags.Stations;
+
+		public bool TargetMeteors
+		{
+			get 
+			{
+				return (TargetMode & TargetFlags.Meteors) != 0;
+			}
+			set 
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.Meteors;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.Meteors;
+				}
+			}
+		}
+
+		public bool TargetMissiles
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.Missiles) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.Missiles;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.Missiles;
+				}
+			}
+		}
+
+		public bool TargetSmallShips
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.SmallShips) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.SmallShips;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.SmallShips;
+				}
+			}
+		}
+
+		public bool TargetLargeShips
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.LargeShips) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.LargeShips;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.LargeShips;
+				}
+			}
+		}
+
+		public bool TargetCharacters
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.Characters) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.Characters;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.Characters;
+				}
+			}
+		}
+
+		public bool TargetStations
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.Stations) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.Stations;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.Stations;
+				}
+			}
+		}
+
+		public bool TargetNeutrals
+		{
+			get
+			{
+				return (TargetMode & TargetFlags.Neutrals) != 0;
+			}
+			set
+			{
+				if (value)
+				{
+					TargetMode |= TargetFlags.Neutrals;
+				}
+				else
+				{
+					TargetMode &= ~TargetFlags.Neutrals;
+				}
+			}
+		}
 
 		public override void SystemRestart()
 		{
@@ -96,6 +242,11 @@ namespace WeaponsOverhaul
 			base.Animate();
 		}
 
+		public void TakeControl() 
+		{ 
+		
+		}
+
 		private void LookAt(Vector3D target)
 		{
 			
@@ -129,13 +280,7 @@ namespace WeaponsOverhaul
 
 		// Whip's CalculateProjectileInterceptPosition Method
 		// Uses vector math as opposed to the quadratic equation
-		private static Vector3D CalculateProjectileInterceptPosition(
-			double projectileSpeed,
-			Vector3D shooterVelocity,
-			Vector3D shooterPosition,
-			Vector3D targetVelocity,
-			Vector3D targetPos,
-			double interceptPointMultiplier = 1)
+		private static Vector3D CalculateProjectileInterceptPosition(double projectileSpeed, Vector3D shooterVelocity, Vector3D shooterPosition, Vector3D targetVelocity, Vector3D targetPos, double interceptPointMultiplier = 1)
 		{
 			var directHeading = targetPos - shooterPosition;
 			var directHeadingNorm = Vector3D.Normalize(directHeading);
@@ -159,18 +304,70 @@ namespace WeaponsOverhaul
 		{
 			//target priority
 			//missiles, suits, metior, decoys, closest terminal block
+			MyGridTargeting targetingSystem = Block.CubeGrid.Components.Get<MyGridTargeting>();
 
-			try
+			if (targetingSystem == null)
+				return;
+
+			List<MyEntity> targetSet = targetingSystem.TargetRoots;
+
+			double likelyTargetDistanceSqrd = double.MaxValue;
+			MyEntity likelyTarget = null;
+			foreach (MyEntity t in targetSet)
 			{
-				List<MyEntity> targets = Block.CubeGrid.Components.Get<MyGridTargeting>().TargetRoots;
-
-				Target = targets[0];
-
-				//MyAPIGateway.Utilities.ShowNotification($"Target Count: {targets.Count}", 1);
-
+				
 			}
-			catch
-			{ }
+
+
+			//try
+			//{
+			//	List<MyEntity> targets = targetingSystem.TargetRoots;
+
+			//	Target = targets[0];
+
+			//	//MyAPIGateway.Utilities.ShowNotification($"Target Count: {targets.Count}", 1);
+
+			//}
+			//catch
+			//{ }
+		}
+
+		private bool IsNonGridTarget(MyEntity entity)
+		{
+			//if (entity is MyDebrisBase)
+			//{
+			//	return false;
+			//}
+
+			if (entity.Physics != null && !entity.Physics.Enabled)
+			{
+				return false;
+			}
+
+			if (entity is MyMeteor)
+			{
+				return TargetMeteors;
+			}
+
+			string typeName = entity.GetType().Name;
+			if (typeName == "MyMissile")
+			{
+				return TargetMissiles;
+			}
+
+			// dont think this should be here
+			if (entity is IMyDecoy)
+			{
+				return true;
+			}
+
+			IMyCharacter myCharacter = entity as IMyCharacter;
+			if (myCharacter != null)
+			{
+				return TargetCharacters && !myCharacter.IsDead;
+			}
+
+			return false;
 		}
 
 		protected void RotateModels()

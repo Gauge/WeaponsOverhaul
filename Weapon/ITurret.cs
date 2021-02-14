@@ -6,6 +6,9 @@ namespace WeaponsOverhaul
 {
 	public interface ITurret
 	{
+
+		void TakeControl();
+
 		//void UpdateAI();
 	}
 }

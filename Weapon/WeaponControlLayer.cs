@@ -93,7 +93,7 @@ namespace WeaponsOverhaul
 			if (Settings.Initialized)
 				SystemRestart();
 
-			NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME; 
+			NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
 		}
 
 		public override void UpdateOnceBeforeFrame()
@@ -113,7 +113,7 @@ namespace WeaponsOverhaul
 			Weapon.Update();
 		}
 
-		public override void UpdateAfterSimulation() 
+		public override void UpdateAfterSimulation()
 		{
 			Weapon.Animate();
 		}
@@ -153,7 +153,7 @@ namespace WeaponsOverhaul
 				HijackUpdates = true;
 			}
 
-			
+
 			if (Entity is IMySmallGatlingGun && !HijackSmallGatlingGun)
 			{
 				Tools.Debug($"Hijacking fixed guns");
@@ -329,6 +329,863 @@ namespace WeaponsOverhaul
 						}
 					};
 				}
+
+				else if (a.Id == "Control")
+				{
+					//oldAction = a.Action;
+					//oldWriter = a.Writer;
+
+					//a.Action = (block) => {
+					//	try
+					//	{
+					//		WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+					//		if (logic != null)
+					//		{
+					//			TurretBase tb = logic.Weapon as TurretBase;
+
+					//			if (tb == null)
+					//				return;
+
+					//			tb.TakeControl();
+					//		}
+					//		else
+					//		{
+					//			oldAction?.Invoke(block);
+					//		}
+					//	}
+					//	catch (Exception e)
+					//	{
+					//		Tools.Warning($"Failed to take control of turret\n {e}");
+					//	}
+					//};
+				}
+
+				else if (a.Id == "IncreaseRange")
+				{
+
+				}
+				else if (a.Id == "DecreaseRange")
+				{
+
+				}
+				else if (a.Id == "EnableIdleMovement")
+				{
+
+				}
+				else if (a.Id == "EnableIdleMovement_On")
+				{
+
+				}
+				else if (a.Id == "EnableIdleMovement_Off")
+				{
+
+				}
+
+				else if (a.Id == "TargetMeteors")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMeteors = !tb.TargetMeteors;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMeteors) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+
+				}
+				else if (a.Id == "TargetMeteors_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMeteors = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMeteors) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetMeteors_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMeteors = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMeteors) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetMissiles")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMissiles = !tb.TargetMissiles;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMissiles) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetMissiles_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMissiles = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMissiles) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetMissiles_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMissiles = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetMissiles) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetSmallShips")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetSmallShips = !tb.TargetSmallShips;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetSmallShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetSmallShips_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetSmallShips = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetSmallShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetSmallShips_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetSmallShips = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetSmallShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetLargeShips")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetLargeShips = !tb.TargetLargeShips;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetLargeShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetLargeShips_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetLargeShips = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetLargeShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetLargeShips_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetLargeShips = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetLargeShips) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetCharacters")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetCharacters = !tb.TargetCharacters;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetCharacters) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetCharacters_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetCharacters = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetCharacters) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetCharacters_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetCharacters = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetCharacters) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetStations")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetStations = !tb.TargetStations;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetStations) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetStations_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetStations = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetStations) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetStations_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetStations = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetStations) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+
+				else if (a.Id == "TargetNeutrals")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetNeutrals = !tb.TargetNeutrals;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetNeutrals) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetNeutrals_On")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetNeutrals = true;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetNeutrals) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
+				else if (a.Id == "TargetNeutrals_Off")
+				{
+					oldAction = a.Action;
+					oldWriter = a.Writer;
+
+					a.Action = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetNeutrals = false;
+						}
+						else
+						{
+							oldAction?.Invoke(block);
+						}
+					};
+
+					a.Writer = (block, text) => {
+
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							text.Append((tb.TargetNeutrals) ? "On" : "Off");
+						}
+						else
+						{
+							oldWriter?.Invoke(block, text);
+						}
+					};
+				}
 			}
 
 			List<IMyTerminalControl> controls = new List<IMyTerminalControl>();
@@ -343,45 +1200,30 @@ namespace WeaponsOverhaul
 					oldSetter = onoff.Setter;
 
 					onoff.Setter = (block, value) => {
-						try
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
 						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon as WeaponBase;
-								if (wb == null)
-									return;
+							WeaponBase wb = logic.Weapon as WeaponBase;
+							if (wb == null)
+								return;
 
-								wb.State.Value ^= WeaponState.TerminalShoot;
-							}
-							else
-							{
-								oldSetter?.Invoke(block, value);
-							}
+							wb.State.Value ^= WeaponState.TerminalShoot;
 						}
-						catch (Exception e)
+						else
 						{
-							Tools.Warning($"Failed to toggle Shoot On/Off terminal control\n {e.ToString()}");
+							oldSetter?.Invoke(block, value);
 						}
 					};
 
 					onoff.Getter = (block) => {
-						try
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
 						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								return (logic.Weapon.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
-							}
-							else
-							{
-								return oldGetter.Invoke(block);
-							}
+							return (logic.Weapon.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
 						}
-						catch (Exception e)
+						else
 						{
-							Tools.Warning($"Failed to get the Shoot On/Off terminal control\n {e}");
-							return false;
+							return oldGetter.Invoke(block);
 						}
 					};
 				}
@@ -390,25 +1232,291 @@ namespace WeaponsOverhaul
 					IMyTerminalControlButton button = c as IMyTerminalControlButton;
 					oldAction = button.Action;
 					button.Action = (block) => {
-						try
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
 						{
-							WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
-							if (logic != null)
-							{
-								WeaponBase wb = logic.Weapon;
-								if (wb == null)
-									return;
+							WeaponBase wb = logic.Weapon;
+							if (wb == null)
+								return;
 
-								wb.State.Value |= WeaponState.TerminalShootOnce;
-							}
-							else
-							{
-								oldAction?.Invoke(block);
-							}
+							wb.State.Value |= WeaponState.TerminalShootOnce;
 						}
-						catch (Exception e)
+						else
 						{
-							Tools.Warning($"Failed the shoot once action\n {e}");
+							oldAction?.Invoke(block);
+						}
+					};
+				}
+
+				else if (c.Id == "Control")
+				{ }
+				else if (c.Id == "Range")
+				{ }
+				else if (c.Id == "EnableIdleMovement")
+				{ }
+				else if (c.Id == "TargetMeteors")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMeteors = !tb.TargetMeteors;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetMeteors;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetMissiles")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetMissiles = !tb.TargetMissiles;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetMissiles;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetSmallShips")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetSmallShips = !tb.TargetSmallShips;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetSmallShips;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetLargeShips")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetLargeShips = !tb.TargetLargeShips;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetLargeShips;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetCharacters")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetCharacters = !tb.TargetCharacters;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetCharacters;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetStations")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetStations = !tb.TargetStations;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetStations;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
+						}
+					};
+				}
+				else if (c.Id == "TargetNeutrals")
+				{
+					IMyTerminalControlOnOffSwitch onoff = c as IMyTerminalControlOnOffSwitch;
+					oldGetter = onoff.Getter;
+					oldSetter = onoff.Setter;
+
+					onoff.Setter = (block, value) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return;
+
+							tb.TargetNeutrals = !tb.TargetNeutrals;
+						}
+						else
+						{
+							oldSetter?.Invoke(block, value);
+						}
+					};
+
+					onoff.Getter = (block) => {
+						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
+						if (logic != null)
+						{
+							TurretBase tb = logic.Weapon as TurretBase;
+							if (tb == null)
+								return false;
+
+							return tb.TargetNeutrals;
+						}
+						else
+						{
+							return oldGetter.Invoke(block);
 						}
 					};
 				}
