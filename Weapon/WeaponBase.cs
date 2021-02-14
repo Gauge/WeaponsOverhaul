@@ -112,17 +112,17 @@ namespace WeaponsOverhaul
 					(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
 					(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
 
-				if (oldshoot != shooting)
-				{
-					if (shooting)
-					{
-						ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
-					}
-					else if (!IsAnimated)
-					{
-						ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
-					}
-				}
+				//if (oldshoot != shooting)
+				//{
+				//	if (shooting)
+				//	{
+				//		ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
+				//	}
+				//	else if (!IsAnimated)
+				//	{
+				//		ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				//	}
+				//}
 			}
 			catch (Exception e)
 			{
@@ -168,10 +168,10 @@ namespace WeaponsOverhaul
 			// stop looping if not shooting
 			if (!IsShooting)
 			{
-				if (!IsAnimated)
-				{
-					ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
-				}
+				//if (!IsAnimated)
+				//{
+				//	ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+				//}
 
 				return;
 			}
@@ -245,6 +245,8 @@ namespace WeaponsOverhaul
 					sbyte index = DeviationIndex.Value;
 					MatrixD positionMatrix = Matrix.CreateWorld(origin, Tools.ApplyDeviation(direction, DeviateShotAngle, ref index), muzzleMatrix.Up);
 					DeviationIndex.SetValue(index, SyncType.None);
+
+					//Tools.AddGPS(CubeBlock.EntityId, positionMatrix.Translation);
 
 					// spawn projectile
 					Core.Static.Spawn(positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, Block.EntityId, ammo);

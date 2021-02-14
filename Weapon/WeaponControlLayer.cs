@@ -106,6 +106,7 @@ namespace WeaponsOverhaul
 			}
 
 			HijackSystem();
+			NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 		}
 
 		public override void UpdateBeforeSimulation()

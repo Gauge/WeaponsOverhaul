@@ -1,8 +1,11 @@
 ﻿using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.ModAPI;
 using System;
+using System.Collections.Generic;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
@@ -125,7 +128,6 @@ namespace WeaponsOverhaul
 			Vector3 normal = -new Vector3(MyMath.FastSin(randomFloat) * MyMath.FastCos(randomFloat2), MyMath.FastSin(randomFloat) * MyMath.FastSin(randomFloat2), MyMath.FastCos(randomFloat));
 			return Vector3.TransformNormal(normal, matrix);
 		}
-
 		public static SerializableDefinitionId GetSelectedHotbarDefinition(IMyShipController cockpit)//, ref int index)
 		{
 			if (cockpit == null)
@@ -148,8 +150,6 @@ namespace WeaponsOverhaul
 			//index = toolbar.SelectedSlot.Value;
 			return (item.Data as MyObjectBuilder_ToolbarItemWeapon).defId;
 		}
-
-
 		public static float NormalizeAngle(int angle)
 		{
 			int num = angle % 360;
@@ -160,6 +160,43 @@ namespace WeaponsOverhaul
 			return num;
 		}
 
+
+		private static Dictionary<long, IMyGps> _gpsPoints = new Dictionary<long, IMyGps>();
+		public static void AddGPS(long gridId, Vector3D target)
+		{
+			if (!_gpsPoints.ContainsKey(gridId))
+			{
+				_gpsPoints.Add(gridId, MyAPIGateway.Session.GPS.Create(gridId.ToString(), "", target, true));
+				MyAPIGateway.Session.GPS.AddLocalGps(_gpsPoints[gridId]);
+				MyVisualScriptLogicProvider.SetGPSColor(gridId.ToString(), Color.Orange);
+				_gpsPoints[gridId].Name = "";
+			}
+
+			_gpsPoints[gridId].Coords = target;
+		}
+
+		public static void ClearGPS()
+		{
+			//if (!_wasInTurretLastFrame)
+			//	return;
+
+			foreach (IMyGps gps in _gpsPoints.Values)
+			{
+				MyAPIGateway.Session.GPS.RemoveLocalGps(gps);
+			}
+			_gpsPoints.Clear();
+
+			//_wasInTurretLastFrame = false;
+		}
+
+		public static void RemoveGPS(long id)
+		{
+			if (_gpsPoints.ContainsKey(id))
+			{
+				MyAPIGateway.Session.GPS.RemoveLocalGps(_gpsPoints[id]);
+				_gpsPoints.Remove(id);
+			}
+		}
 
 	}
 }

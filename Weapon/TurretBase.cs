@@ -1,4 +1,5 @@
-﻿using Sandbox.Game.Entities;
+﻿using Sandbox.Game;
+using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using System;
@@ -205,8 +206,7 @@ namespace WeaponsOverhaul
 
 			if (unknownIdleElevation)
 			{
-				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
-				unknownIdleElevation = false;
+				GetIdleAzimuthAndElevation(out idleAzimuth, out idleElevation);
 			}
 
 			Azimuth = idleAzimuth;
@@ -216,17 +216,16 @@ namespace WeaponsOverhaul
 
 		public override void Update()
 		{
-
-			base.Update();
-		}
-
-		public override void Animate()
-		{
-			if (AiEnabled && (CubeBlock as IMyLargeTurretBase).AIEnabled)
+			if (AiEnabled)
 			{
 				if (Target == null)
 				{
-					TargetAcquisition();
+					Target = TargetAcquisition();
+				}
+
+				if (Target != null && (Target.Closed || Target.MarkedForClose))
+				{
+					Target = null;
 				}
 
 				if (Target != null)
@@ -236,8 +235,9 @@ namespace WeaponsOverhaul
 					string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
 					AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
 
-					Vector3D linearVelocity;
+					Tools.AddGPS(Target.EntityId + 3, muzzleMatrix.Translation);
 
+					Vector3D linearVelocity;
 					if (Target is IMyCubeBlock)
 					{
 						linearVelocity = (Target as MyCubeBlock).CubeGrid.Physics.LinearVelocity;
@@ -247,13 +247,44 @@ namespace WeaponsOverhaul
 						linearVelocity = Target.Physics.LinearVelocity;
 					}
 
-					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, Target.PositionComp.GetPosition());
+					Vector3D targetPosition;
+					if (Target is IMyCharacter)
+					{
+						targetPosition = Target.PositionComp.WorldVolume.Center + (Target.WorldMatrix.Up * 0.5f);
+						Tools.AddGPS(Target.EntityId, targetPosition);
+					}
+					else
+					{
+						targetPosition = Target.PositionComp.WorldAABB.Center;
+					}
 
-					LookAt(leadPosition);
+					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, targetPosition);
+
+					Tools.AddGPS(Target.EntityId + 2, leadPosition);
+
+					float remainingAngle = LookAt(leadPosition);
+
+					if (Math.Abs(remainingAngle) < 0.02)
+					{
+						State.Value |= WeaponState.AIShoot;
+					}
+					else
+					{
+						State.Value &= ~WeaponState.AIShoot;
+					}
+
+					MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name} {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")} - {remainingAngle.ToString("n5")} - {linearVelocity.ToString("n2")}", 1);
 				}
-
-				RotateModels();
 			}
+
+
+			base.Update();
+		}
+
+		public override void Animate()
+		{
+			RotateModels();
+
 
 			base.Animate();
 		}
@@ -263,24 +294,35 @@ namespace WeaponsOverhaul
 
 		}
 
-		private void LookAt(Vector3D target)
+		private void GetIdleAzimuthAndElevation(out float idleAzimuth, out float idleElevation)
 		{
+			Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
+			unknownIdleElevation = false;
+		}
 
+		/// <summary>
+		/// Adjusts azimuth and elevation over time to face the target within turret limits
+		/// </summary>
+		/// <returns>the angle remaining before the turret is facing the target</returns>
+		private float LookAt(Vector3D target)
+		{
 			float az = 0;
 			float elev = 0;
 
 			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
 			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out az, out elev);
+
 			if (unknownIdleElevation)
 			{
-				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
-				unknownIdleElevation = false;
+				GetIdleAzimuthAndElevation(out idleAzimuth, out idleElevation);
 			}
 
 			float targetElevation = elev - idleElevation;
 			float targetAzimuth = az - idleAzimuth;
 
+			float elevationAngleDifference = targetElevation - Elevation;
 			float azimuthAngleDifference = targetAzimuth - Azimuth;
+
 			float azimuthTravel = MathHelper.Clamp(azimuthAngleDifference, -AzimuthSpeedPerTick, AzimuthSpeedPerTick);
 
 			if (Math.Abs(azimuthAngleDifference) < Math.PI)
@@ -291,7 +333,7 @@ namespace WeaponsOverhaul
 			Elevation += MathHelper.Clamp(targetElevation - Elevation, -ElevationSpeedPerTick, ElevationSpeedPerTick);
 			Azimuth = MathHelper.WrapAngle(Azimuth);
 
-			//MyAPIGateway.Utilities.ShowNotification($"Azimuth: {Azimuth.ToString("n3")} Elevation: {Elevation.ToString("n3")} Diff: {azimuthAngleDifference.ToString("n5")}", 1);
+			return (azimuthAngleDifference > elevationAngleDifference) ? azimuthAngleDifference : elevationAngleDifference;
 		}
 
 		// Whip's CalculateProjectileInterceptPosition Method
@@ -323,11 +365,11 @@ namespace WeaponsOverhaul
 		/// closest terminal block
 		/// meteor
 		/// </summary>
-		private void TargetAcquisition()
+		private MyEntity TargetAcquisition()
 		{
 			MyGridTargeting targetingSystem = Block.CubeGrid.Components.Get<MyGridTargeting>();
 			if (targetingSystem == null)
-				return;
+				return null;
 
 			List<MyEntity> targetSet = targetingSystem.TargetRoots;
 
@@ -419,16 +461,7 @@ namespace WeaponsOverhaul
 				}
 			}
 
-			Target = likelyTarget;
-			if (Target != null)
-			{
-				MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name}: {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")}", 1);
-			}
-			else
-			{
-				MyAPIGateway.Utilities.ShowNotification($"No Target", 1);
-			}
-
+			return likelyTarget;
 		}
 
 		protected void RotateModels()
