@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -47,15 +48,15 @@ namespace WeaponsOverhaul
 
 		private MyEntity Target;
 
-		private TargetFlags TargetMode = TargetFlags.LargeShips & TargetFlags.SmallShips & TargetFlags.Characters & TargetFlags.Stations;
+		private TargetFlags TargetMode = TargetFlags.LargeShips | TargetFlags.SmallShips | TargetFlags.Characters | TargetFlags.Stations;
 
 		public bool TargetMeteors
 		{
-			get 
+			get
 			{
 				return (TargetMode & TargetFlags.Meteors) != 0;
 			}
-			set 
+			set
 			{
 				if (value)
 				{
@@ -193,7 +194,7 @@ namespace WeaponsOverhaul
 				MinElevationRadians -= MathHelper.Pi * 2f;
 			}
 			MinAzimuthRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MinAzimuthDegrees));
-			MaxAzimuthRadians = MathHelper.ToRadians(Tools. NormalizeAngle(MaxAzimuthDegrees));
+			MaxAzimuthRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MaxAzimuthDegrees));
 			if (MinAzimuthRadians > MaxAzimuthRadians)
 			{
 				MinAzimuthRadians -= MathHelper.Pi * 2f;
@@ -221,9 +222,13 @@ namespace WeaponsOverhaul
 
 		public override void Animate()
 		{
-			if (AiEnabled)
+			if (AiEnabled && (CubeBlock as IMyLargeTurretBase).AIEnabled)
 			{
-				TargetAcquisition();
+				if (Target == null)
+				{
+					TargetAcquisition();
+				}
+
 				if (Target != null)
 				{
 					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
@@ -231,7 +236,18 @@ namespace WeaponsOverhaul
 					string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
 					AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
 
-					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, Target.Physics.LinearVelocity, Target.PositionComp.GetPosition());
+					Vector3D linearVelocity;
+
+					if (Target is IMyCubeBlock)
+					{
+						linearVelocity = (Target as MyCubeBlock).CubeGrid.Physics.LinearVelocity;
+					}
+					else
+					{
+						linearVelocity = Target.Physics.LinearVelocity;
+					}
+
+					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, Target.PositionComp.GetPosition());
 
 					LookAt(leadPosition);
 				}
@@ -242,14 +258,14 @@ namespace WeaponsOverhaul
 			base.Animate();
 		}
 
-		public void TakeControl() 
-		{ 
-		
+		public void TakeControl()
+		{
+
 		}
 
 		private void LookAt(Vector3D target)
 		{
-			
+
 			float az = 0;
 			float elev = 0;
 
@@ -300,74 +316,119 @@ namespace WeaponsOverhaul
 			return shooterPosition + timeToIntercept * (projectileForwardVelocity + normalVelocity);
 		}
 
+		/// <summary>
+		/// target priority
+		/// missiles - not implementing due to keen
+		/// suites, decoys
+		/// closest terminal block
+		/// meteor
+		/// </summary>
 		private void TargetAcquisition()
 		{
-			//target priority
-			//missiles, suits, metior, decoys, closest terminal block
 			MyGridTargeting targetingSystem = Block.CubeGrid.Components.Get<MyGridTargeting>();
-
 			if (targetingSystem == null)
 				return;
 
 			List<MyEntity> targetSet = targetingSystem.TargetRoots;
 
+			float range = (CubeBlock as IMyLargeTurretBase).Range;
+			float maximumRangeSqrd = range * range;
+
 			double likelyTargetDistanceSqrd = double.MaxValue;
 			MyEntity likelyTarget = null;
-			foreach (MyEntity t in targetSet)
+			foreach (MyEntity ent in targetSet)
 			{
-				
+				if (ent.Physics == null || !ent.Physics.Enabled)
+				{
+					continue;
+				}
+
+				IMyCharacter myCharacter = ent as IMyCharacter;
+				if (myCharacter != null)
+				{
+					if (!TargetCharacters || myCharacter.IsDead) // dont target if not set or dead
+						continue;
+
+					IMyPlayer player = MyAPIGateway.Players.GetPlayerControllingEntity(ent);
+					MyRelationsBetweenPlayerAndBlock relation = player.GetRelationTo(CubeBlock.OwnerId);
+
+					if (relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
+						TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
+					{
+						double rangeSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
+						if (rangeSqrd < maximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
+						{
+							likelyTarget = ent;
+							likelyTargetDistanceSqrd = rangeSqrd;
+						}
+					}
+				}
+
+				if (likelyTarget is IMyCharacter)
+					continue;
+
+				MyCubeGrid grid = ent as MyCubeGrid;
+				if (grid != null)
+				{
+					if (grid.GridSizeEnum == MyCubeSize.Large)
+					{
+						if (!TargetLargeShips || (grid.IsStatic && !TargetStations))
+							continue;
+					}
+					else
+					{
+						if (!TargetSmallShips)
+							continue;
+					}
+
+					foreach (MyCubeBlock block in grid.GetFatBlocks())
+					{
+						if (likelyTarget is IMyDecoy && !(block is IMyDecoy))
+							continue;
+
+						MyRelationsBetweenPlayerAndBlock relation = block.GetUserRelationToOwner(CubeBlock.OwnerId);
+
+						if (relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
+							TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
+						{
+							double rangeSqrd = (CubeBlock.WorldMatrix.Translation - block.WorldMatrix.Translation).LengthSquared();
+							if (rangeSqrd < maximumRangeSqrd &&
+								(rangeSqrd < likelyTargetDistanceSqrd || (block is IMyDecoy && !(likelyTarget is IMyDecoy))))
+							{
+								likelyTarget = block;
+								likelyTargetDistanceSqrd = rangeSqrd;
+							}
+						}
+					}
+				}
+
+				if (likelyTarget is IMyCubeBlock)
+					continue;
+
+				if (ent is MyMeteor)
+				{
+					if (!TargetMeteors)
+						continue;
+
+					double rangeSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
+					if (rangeSqrd < maximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
+					{
+						likelyTarget = ent;
+						likelyTargetDistanceSqrd = rangeSqrd;
+					}
+				}
 			}
 
-
-			//try
-			//{
-			//	List<MyEntity> targets = targetingSystem.TargetRoots;
-
-			//	Target = targets[0];
-
-			//	//MyAPIGateway.Utilities.ShowNotification($"Target Count: {targets.Count}", 1);
-
-			//}
-			//catch
-			//{ }
-		}
-
-		private bool IsNonGridTarget(MyEntity entity)
-		{
-			//if (entity is MyDebrisBase)
-			//{
-			//	return false;
-			//}
-
-			if (entity.Physics != null && !entity.Physics.Enabled)
+			Target = likelyTarget;
+			if (Target != null)
 			{
-				return false;
+				MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name}: {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")}", 1);
+			}
+			else
+			{
+				MyAPIGateway.Utilities.ShowNotification($"No Target", 1);
 			}
 
-			if (entity is MyMeteor)
-			{
-				return TargetMeteors;
-			}
-
-			string typeName = entity.GetType().Name;
-			if (typeName == "MyMissile")
-			{
-				return TargetMissiles;
-			}
-
-			// dont think this should be here
-			if (entity is IMyDecoy)
-			{
-				return true;
-			}
-
-			IMyCharacter myCharacter = entity as IMyCharacter;
-			if (myCharacter != null)
-			{
-				return TargetCharacters && !myCharacter.IsDead;
-			}
-
-			return false;
 		}
 
 		protected void RotateModels()
