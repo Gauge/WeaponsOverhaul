@@ -480,10 +480,8 @@ namespace WeaponsOverhaul
 
 		protected void RotateModels()
 		{
-			Tools.Debug("Rotate 1");
 			if (modelBase1 == null || modelBase2 == null || modelBarrel == null)
 			{
-				Tools.Debug("Rotate 2");
 				if (CubeBlock.Subparts.ContainsKey("GatlingTurretBase1"))
 				{
 					modelBase1 = CubeBlock.Subparts["GatlingTurretBase1"];
