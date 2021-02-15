@@ -27,13 +27,81 @@ namespace WeaponsOverhaul
 						(State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce;
 
 		public bool IsAnimated => MuzzleFlashActive; //TODO: add barrel rotation at some point
-
 		public bool IsOutOfAmmo => !gun.GunBase.HasEnoughAmmunition();
 		public bool IsReloading => Reloading.Value;//(State.Value & WeaponState.Reloading) == WeaponState.Reloading;
-		public bool IsAIShooting => (State.Value & WeaponState.AIShoot) == WeaponState.AIShoot;
-		public bool IsManualShooting => (State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot;
-		public bool IsTerminalShooting => (State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
-		public bool IsTerminalShootOnce => (State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce;
+		public bool IsAIShooting 
+		{
+			get { return (State.Value & WeaponState.AIShoot) == WeaponState.AIShoot; }
+			set 
+			{
+				if (value != ((State.Value & WeaponState.AIShoot) == WeaponState.AIShoot))
+				{
+					if (value)
+					{
+						State.Value = WeaponState.AIShoot;
+					}
+					else
+					{
+						State.Value &= ~WeaponState.AIShoot;
+					}
+				}	
+			}
+		} 
+		public bool IsManualShooting 
+		{
+			get { return (State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot; }
+			set 
+			{
+				if (value != ((State.Value & WeaponState.ManualShoot) == WeaponState.ManualShoot))
+				{
+					if (value)
+					{
+						State.Value = WeaponState.ManualShoot;
+					}
+					else
+					{
+						State.Value &= ~WeaponState.ManualShoot;
+					}
+				}
+			}
+		}
+		public bool IsTerminalShooting
+		{
+			get { return (State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot; }
+			set
+			{
+				if (value != ((State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot))
+				{
+					if (value)
+					{
+						State.Value |= WeaponState.TerminalShoot;
+					}
+					else
+					{
+						State.Value &= ~WeaponState.TerminalShoot;
+					}
+				}
+			}
+		}
+
+		public bool IsTerminalShootOnce 
+		{
+			get { return (State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce; }
+			set
+			{
+				if (value != ((State.Value & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce))
+				{
+					if (value)
+					{
+						State.Value |= WeaponState.TerminalShootOnce;
+					}
+					else
+					{
+						State.Value &= ~WeaponState.TerminalShootOnce;
+					}
+				}
+			}
+		}
 
 		public NetSync<WeaponState> State;
 		protected NetSync<bool> Reloading;
@@ -104,30 +172,30 @@ namespace WeaponsOverhaul
 
 		private void StateChanged(WeaponState o, WeaponState n)
 		{
-			try
-			{
-				bool shooting = IsShooting;
-				bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
-					(o & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
-					(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
-					(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
+			//try
+			//{
+			//	bool shooting = IsShooting;
+			//	bool oldshoot = ((o & WeaponState.AIShoot) == WeaponState.AIShoot ||
+			//		(o & WeaponState.ManualShoot) == WeaponState.ManualShoot ||
+			//		(o & WeaponState.TerminalShoot) == WeaponState.TerminalShoot ||
+			//		(o & WeaponState.TerminalShootOnce) == WeaponState.TerminalShootOnce);
 
-				//if (oldshoot != shooting)
-				//{
-				//	if (shooting)
-				//	{
-				//		ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
-				//	}
-				//	else if (!IsAnimated)
-				//	{
-				//		ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
-				//	}
-				//}
-			}
-			catch (Exception e)
-			{
-				Tools.Error(e.ToString());
-			}
+			//	if (oldshoot != shooting)
+			//	{
+			//		if (shooting)
+			//		{
+			//			ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.EACH_FRAME;
+			//		}
+			//		else if (!IsAnimated)
+			//		{
+			//			ControlLayer.NeedsUpdate = VRage.ModAPI.MyEntityUpdateEnum.NONE;
+			//		}
+			//	}
+			//}
+			//catch (Exception e)
+			//{
+			//	Tools.Error(e.ToString());
+			//}
 		}
 
 		/// <summary>

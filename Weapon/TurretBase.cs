@@ -1,7 +1,5 @@
-﻿using Sandbox.Game;
-using Sandbox.Game.Entities;
+﻿using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
-using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
@@ -46,6 +44,9 @@ namespace WeaponsOverhaul
 
 		private bool IsAzimuthLimited;
 		private bool IsElevationLimited;
+
+		private float MaximumRangeSqrd = 0;
+
 
 		private MyEntitySubpart modelBase1;
 		private MyEntitySubpart modelBase2;
@@ -202,7 +203,7 @@ namespace WeaponsOverhaul
 			InitializeTurretControls();
 		}
 
-		private void InitializeTurretControls() 
+		private void InitializeTurretControls()
 		{
 			MinElevationRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MinElevationDegrees));
 			MaxElevationRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MaxElevationDegrees));
@@ -222,7 +223,8 @@ namespace WeaponsOverhaul
 
 			if (unknownIdleElevation)
 			{
-				GetIdleAzimuthAndElevation(out IdleAzimuth, out IdleElevation);
+				Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out IdleAzimuth, out IdleElevation);
+				unknownIdleElevation = false;
 			}
 
 			Azimuth = IdleAzimuth;
@@ -236,63 +238,12 @@ namespace WeaponsOverhaul
 		{
 			if (AiEnabled)
 			{
-				if (Target == null)
-				{
-					Target = TargetAcquisition();
-				}
+				//update per frame variables
+				MaximumRangeSqrd = (CubeBlock as IMyLargeTurretBase).Range;
+				MaximumRangeSqrd = MaximumRangeSqrd * MaximumRangeSqrd;
 
-				if (Target != null && (Target.Closed || Target.MarkedForClose))
-				{
-					Target = null;
-					State.Value &= ~WeaponState.AIShoot;
-				}
-
-				if (Target != null)
-				{
-					MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
-
-					string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
-					AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
-
-					Vector3D linearVelocity;
-					if (Target is IMyCubeBlock)
-					{
-						linearVelocity = (Target as MyCubeBlock).CubeGrid.Physics.LinearVelocity;
-					}
-					else
-					{
-						linearVelocity = Target.Physics.LinearVelocity;
-					}
-
-					Vector3D targetPosition;
-					if (Target is IMyCharacter)
-					{
-						targetPosition = Target.PositionComp.WorldVolume.Center + (Target.WorldMatrix.Up * 0.5f);
-					}
-					else
-					{
-						targetPosition = Target.PositionComp.WorldAABB.Center;
-					}
-
-					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, targetPosition);
-
-					Tools.AddGPS(CubeBlock.EntityId + 2, leadPosition);
-
-					float remainingAngle = LookAt(leadPosition);
-
-					if (Math.Abs(remainingAngle) < 0.02)
-					{
-						State.Value |= WeaponState.AIShoot;
-					}
-					else
-					{
-						State.Value &= ~WeaponState.AIShoot;
-					}
-
-					//MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name} {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")} - {remainingAngle.ToString("n5")} - {linearVelocity.ToString("n2")}", 1);
-				}
+				UpdateAI();
 			}
-
 
 			base.Update();
 		}
@@ -308,10 +259,56 @@ namespace WeaponsOverhaul
 
 		}
 
-		private void GetIdleAzimuthAndElevation(out float idleAzimuth, out float idleElevation)
+		private void UpdateAI()
 		{
-			Vector3.GetAzimuthAndElevation(gun.GunBase.GetMuzzleLocalMatrix().Forward, out idleAzimuth, out idleElevation);
-			unknownIdleElevation = false;
+			if (!IsValidTarget(Target))
+			{
+				IsAIShooting = false;
+				Target = TargetAcquisition();
+			}
+
+			if (Target != null)
+			{
+				MatrixD muzzleMatrix = gun.GunBase.GetMuzzleWorldMatrix();
+				string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
+				AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
+
+				Vector3D linearVelocity;
+				if (Target is IMyCubeBlock)
+				{
+					linearVelocity = (Target as MyCubeBlock).CubeGrid.Physics.LinearVelocity;
+				}
+				else
+				{
+					linearVelocity = Target.Physics.LinearVelocity;
+				}
+
+				Vector3D targetPosition;
+				if (Target is IMyCharacter)
+				{
+					targetPosition = Target.PositionComp.WorldVolume.Center + (Target.WorldMatrix.Up * 0.5f);
+				}
+				else
+				{
+					targetPosition = Target.PositionComp.WorldAABB.Center;
+				}
+
+				Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, targetPosition);
+
+				if (IsTargetVisible(Target, leadPosition))
+				{
+					Tools.AddGPS(CubeBlock.EntityId + 2, leadPosition);
+					float remainingAngle = LookAt(leadPosition);
+					// does not shoot if the angle (radians) is not close to on target
+					IsAIShooting = Math.Abs(remainingAngle) < 0.02;
+				}
+				else
+				{
+					Target = null;
+				}
+
+				//MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name} {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")} - {remainingAngle.ToString("n5")} - {linearVelocity.ToString("n2")}", 1);
+			}
 		}
 
 		/// <summary>
@@ -325,11 +322,6 @@ namespace WeaponsOverhaul
 
 			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
 			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out az, out elev);
-
-			if (unknownIdleElevation)
-			{
-				GetIdleAzimuthAndElevation(out IdleAzimuth, out IdleElevation);
-			}
 
 			float targetElevation = elev - IdleElevation;
 			float targetAzimuth = az - IdleAzimuth;
@@ -387,9 +379,6 @@ namespace WeaponsOverhaul
 
 			List<MyEntity> targetSet = targetingSystem.TargetRoots;
 
-			float range = (CubeBlock as IMyLargeTurretBase).Range;
-			float maximumRangeSqrd = range * range;
-
 			double likelyTargetDistanceSqrd = double.MaxValue;
 			MyEntity likelyTarget = null;
 			foreach (MyEntity ent in targetSet)
@@ -412,10 +401,13 @@ namespace WeaponsOverhaul
 						TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
 					{
 						double rangeSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
-						if (rangeSqrd < maximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
+						if (rangeSqrd < MaximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
 						{
-							likelyTarget = ent;
-							likelyTargetDistanceSqrd = rangeSqrd;
+							if (IsTargetVisible(ent, ent.WorldMatrix.Translation))
+							{
+								likelyTarget = ent;
+								likelyTargetDistanceSqrd = rangeSqrd;
+							}
 						}
 					}
 				}
@@ -448,11 +440,14 @@ namespace WeaponsOverhaul
 							TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
 						{
 							double rangeSqrd = (CubeBlock.WorldMatrix.Translation - block.WorldMatrix.Translation).LengthSquared();
-							if (rangeSqrd < maximumRangeSqrd &&
+							if (rangeSqrd < MaximumRangeSqrd &&
 								(rangeSqrd < likelyTargetDistanceSqrd || (block is IMyDecoy && !(likelyTarget is IMyDecoy))))
 							{
-								likelyTarget = block;
-								likelyTargetDistanceSqrd = rangeSqrd;
+								if (IsTargetVisible(block, block.WorldMatrix.Translation))
+								{
+									likelyTarget = block;
+									likelyTargetDistanceSqrd = rangeSqrd;
+								}
 							}
 						}
 					}
@@ -467,15 +462,117 @@ namespace WeaponsOverhaul
 						continue;
 
 					double rangeSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
-					if (rangeSqrd < maximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
+					if (rangeSqrd < MaximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
 					{
-						likelyTarget = ent;
-						likelyTargetDistanceSqrd = rangeSqrd;
+						if (IsTargetVisible(ent, ent.WorldMatrix.Translation))
+						{
+							likelyTarget = ent;
+							likelyTargetDistanceSqrd = rangeSqrd;
+						}
 					}
 				}
 			}
 
 			return likelyTarget;
+		}
+
+		private bool IsTargetVisible(MyEntity target, Vector3D predictedPosition) 
+		{
+			if (target == null)
+			{
+				return false;
+			}
+			if (target.GetTopMostParent()?.Physics == null)
+			{
+				return false;
+			}
+
+			Vector3D from = gun.GunBase.GetMuzzleWorldPosition() + gun.GunBase.WorldMatrix.Forward * 0.5;
+
+			IHitInfo hit;
+			MyAPIGateway.Physics.CastLongRay(from, predictedPosition, out hit, false);
+
+			if (hit != null && hit.HitEntity != null)
+			{
+				if (target == hit.HitEntity || target.Parent == hit.HitEntity || (target.Parent != null && target.Parent == hit.HitEntity.Parent) || hit.HitEntity is MyFloatingObject || hit.HitEntity.GetType().Name == "MyMissile")
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private bool IsValidTarget(MyEntity ent)
+		{
+			if (ent == null || ent.Closed || ent.MarkedForClose)
+				return false;
+
+			double distanceSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
+			if (distanceSqrd > MaximumRangeSqrd)
+				return false;
+
+			return IsValidCharacter(ent as IMyCharacter) || IsValidCubeBlock(ent as IMyCubeBlock) || IsValidMeteor(ent as MyMeteor);
+		}
+
+		private bool IsValidCharacter(IMyCharacter character)
+		{
+			if (character != null)
+			{
+				if (!TargetCharacters || character.IsDead) // dont target if not set or dead
+					return false;
+
+				IMyPlayer player = MyAPIGateway.Players.GetPlayerControllingEntity(character);
+				MyRelationsBetweenPlayerAndBlock relation = player.GetRelationTo(CubeBlock.OwnerId);
+
+				if (!(relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
+					TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership)))
+				{
+					return false;
+				}
+
+				return true;
+			}
+
+			return false;
+		}
+
+		private bool IsValidCubeBlock(IMyCubeBlock block)
+		{
+			if (block != null)
+			{
+				if (block.CubeGrid.GridSizeEnum == MyCubeSize.Large)
+				{
+					if (!TargetLargeShips || (block.CubeGrid.IsStatic && !TargetStations))
+						return false;
+				}
+				else
+				{
+					if (!TargetSmallShips)
+						return false;
+				}
+
+				MyRelationsBetweenPlayerAndBlock relation = block.GetUserRelationToOwner(CubeBlock.OwnerId);
+				if (!(relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
+					TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership)))
+				{
+					return false;
+				}
+
+				return true;
+			}
+
+			return false;
+		}
+
+		private bool IsValidMeteor(MyMeteor meteor)
+		{
+			if (meteor != null)
+			{
+				return !TargetMeteors;
+			}
+
+			return false;
 		}
 
 		protected void RotateModels()
@@ -530,7 +627,7 @@ namespace WeaponsOverhaul
 			}
 
 			if (IsElevationLimited)
-			{ 
+			{
 				Elevation = Math.Min(MaxElevationRadians, Math.Max(MinElevationRadians, Elevation));
 			}
 		}

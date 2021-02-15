@@ -207,7 +207,7 @@ namespace WeaponsOverhaul
 								if (wb == null)
 									return;
 
-								wb.State.Value ^= WeaponState.TerminalShoot;
+								wb.IsTerminalShooting = !wb.IsTerminalShooting;
 							}
 							else
 							{
@@ -246,7 +246,7 @@ namespace WeaponsOverhaul
 								if (wb == null)
 									return;
 
-								wb.State.Value |= WeaponState.TerminalShootOnce;
+								wb.IsTerminalShootOnce = true;
 							}
 							else
 							{
@@ -273,7 +273,7 @@ namespace WeaponsOverhaul
 								if (wb == null)
 									return;
 
-								wb.State.Value |= WeaponState.TerminalShoot;
+								wb.IsTerminalShooting = true;
 							}
 							else
 							{
@@ -315,7 +315,7 @@ namespace WeaponsOverhaul
 								if (wb == null)
 									return;
 
-								wb.State.Value &= ~WeaponState.TerminalShoot;
+								wb.IsTerminalShooting = false;
 							}
 							else
 							{
@@ -1219,7 +1219,7 @@ namespace WeaponsOverhaul
 							if (wb == null)
 								return;
 
-							wb.State.Value ^= WeaponState.TerminalShoot;
+							wb.IsTerminalShooting = !wb.IsTerminalShooting;
 						}
 						else
 						{
@@ -1231,7 +1231,7 @@ namespace WeaponsOverhaul
 						WeaponControlLayer logic = block.GameLogic.GetAs<WeaponControlLayer>();
 						if (logic != null)
 						{
-							return (logic.Weapon.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot;
+							return logic.Weapon.IsTerminalShooting;
 						}
 						else
 						{
@@ -1251,7 +1251,7 @@ namespace WeaponsOverhaul
 							if (wb == null)
 								return;
 
-							wb.State.Value |= WeaponState.TerminalShootOnce;
+							wb.IsTerminalShootOnce = true;
 						}
 						else
 						{
@@ -1537,7 +1537,7 @@ namespace WeaponsOverhaul
 
 		private static void WeaponsFiringWriter(WeaponBase wb, StringBuilder str)
 		{
-			if (wb != null && (wb.State.Value & WeaponState.TerminalShoot) == WeaponState.TerminalShoot)
+			if (wb != null && wb.IsTerminalShooting)
 			{
 				str.Append("On");
 			}
