@@ -246,8 +246,6 @@ namespace WeaponsOverhaul
 					MatrixD positionMatrix = Matrix.CreateWorld(origin, Tools.ApplyDeviation(direction, DeviateShotAngle, ref index), muzzleMatrix.Up);
 					DeviationIndex.SetValue(index, SyncType.None);
 
-					//Tools.AddGPS(CubeBlock.EntityId, positionMatrix.Translation);
-
 					// spawn projectile
 					Core.Static.Spawn(positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, Block.EntityId, ammo);
 					//Projectile bullet = new Projectile(CubeBlock.EntityId, positionMatrix.Translation, positionMatrix.Forward, Block.CubeGrid.Physics.LinearVelocity, ammoId);

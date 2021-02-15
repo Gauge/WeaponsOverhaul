@@ -106,6 +106,10 @@ namespace WeaponsOverhaul
 			}
 
 			HijackSystem();
+
+			IMyCubeBlock block = Entity as IMyCubeBlock;
+			if (block.CubeGrid.Physics == null || !block.CubeGrid.Physics.Enabled)
+				return;
 			NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 		}
 
@@ -145,7 +149,14 @@ namespace WeaponsOverhaul
 				MyEntitiesInterface.RegisterUpdate = (e) => {
 					if (e.GameLogic.GetAs<WeaponControlLayer>() != null && e.NeedsUpdate != MyEntityUpdateEnum.NONE)
 					{
-						e.NeedsUpdate = MyEntityUpdateEnum.NONE;
+						if ((e.NeedsUpdate & MyEntityUpdateEnum.BEFORE_NEXT_FRAME) != 0)
+						{
+							e.NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+						}
+						else
+						{
+							e.NeedsUpdate = MyEntityUpdateEnum.NONE;
+						}
 					}
 
 					old?.Invoke(e);

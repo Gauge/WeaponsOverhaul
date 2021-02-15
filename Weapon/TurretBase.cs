@@ -1,6 +1,7 @@
 ﻿using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
+using Sandbox.Game.Weapons;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
@@ -28,9 +29,12 @@ namespace WeaponsOverhaul
 
 		public const float KeenRotationMultiplyer = 16f;
 
-		private bool unknownIdleElevation = true;
 		public float Azimuth;
 		public float Elevation;
+
+		private float IdleAzimuth = 0;
+		private float IdleElevation = 0;
+		private bool unknownIdleElevation = true;
 
 		private float AzimuthSpeedPerTick;
 		private float ElevationSpeedPerTick;
@@ -40,8 +44,8 @@ namespace WeaponsOverhaul
 		private float MinAzimuthRadians;
 		private float MaxAzimuthRadians = MathHelper.Pi * 2f;
 
-		private float idleAzimuth = 0;
-		private float idleElevation = 0;
+		private bool IsAzimuthLimited;
+		private bool IsElevationLimited;
 
 		private MyEntitySubpart modelBase1;
 		private MyEntitySubpart modelBase2;
@@ -184,10 +188,22 @@ namespace WeaponsOverhaul
 			}
 		}
 
+		public override void Start()
+		{
+			base.Start();
+
+			InitializeTurretControls();
+		}
+
 		public override void SystemRestart()
 		{
 			base.SystemRestart();
 
+			InitializeTurretControls();
+		}
+
+		private void InitializeTurretControls() 
+		{
 			MinElevationRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MinElevationDegrees));
 			MaxElevationRadians = MathHelper.ToRadians(Tools.NormalizeAngle(MaxElevationDegrees));
 			if (MinElevationRadians > MaxElevationRadians)
@@ -206,12 +222,14 @@ namespace WeaponsOverhaul
 
 			if (unknownIdleElevation)
 			{
-				GetIdleAzimuthAndElevation(out idleAzimuth, out idleElevation);
+				GetIdleAzimuthAndElevation(out IdleAzimuth, out IdleElevation);
 			}
 
-			Azimuth = idleAzimuth;
-			Elevation = idleElevation;
+			Azimuth = IdleAzimuth;
+			Elevation = IdleElevation;
 
+			IsAzimuthLimited = Math.Abs(MaxAzimuthRadians - MinAzimuthRadians - MathHelper.Pi * 2f) > 0.01f;
+			IsElevationLimited = Math.Abs(MaxElevationRadians - MinElevationRadians - MathHelper.Pi * 2f) > 0.01f;
 		}
 
 		public override void Update()
@@ -226,6 +244,7 @@ namespace WeaponsOverhaul
 				if (Target != null && (Target.Closed || Target.MarkedForClose))
 				{
 					Target = null;
+					State.Value &= ~WeaponState.AIShoot;
 				}
 
 				if (Target != null)
@@ -234,8 +253,6 @@ namespace WeaponsOverhaul
 
 					string ammoId = gun.GunBase.CurrentAmmoDefinition.Id.SubtypeId.String;
 					AmmoDefinition ammo = Settings.AmmoDefinitionLookup[ammoId];
-
-					Tools.AddGPS(Target.EntityId + 3, muzzleMatrix.Translation);
 
 					Vector3D linearVelocity;
 					if (Target is IMyCubeBlock)
@@ -251,7 +268,6 @@ namespace WeaponsOverhaul
 					if (Target is IMyCharacter)
 					{
 						targetPosition = Target.PositionComp.WorldVolume.Center + (Target.WorldMatrix.Up * 0.5f);
-						Tools.AddGPS(Target.EntityId, targetPosition);
 					}
 					else
 					{
@@ -260,7 +276,7 @@ namespace WeaponsOverhaul
 
 					Vector3D leadPosition = CalculateProjectileInterceptPosition(ammo.DesiredSpeed, Block.CubeGrid.Physics.LinearVelocity, muzzleMatrix.Translation, linearVelocity, targetPosition);
 
-					Tools.AddGPS(Target.EntityId + 2, leadPosition);
+					Tools.AddGPS(CubeBlock.EntityId + 2, leadPosition);
 
 					float remainingAngle = LookAt(leadPosition);
 
@@ -273,7 +289,7 @@ namespace WeaponsOverhaul
 						State.Value &= ~WeaponState.AIShoot;
 					}
 
-					MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name} {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")} - {remainingAngle.ToString("n5")} - {linearVelocity.ToString("n2")}", 1);
+					//MyAPIGateway.Utilities.ShowNotification($"{Target.GetType().Name} {(CubeBlock.WorldMatrix.Translation - Target.WorldMatrix.Translation).Length().ToString("n0")} - {remainingAngle.ToString("n5")} - {linearVelocity.ToString("n2")}", 1);
 				}
 			}
 
@@ -284,8 +300,6 @@ namespace WeaponsOverhaul
 		public override void Animate()
 		{
 			RotateModels();
-
-
 			base.Animate();
 		}
 
@@ -314,11 +328,11 @@ namespace WeaponsOverhaul
 
 			if (unknownIdleElevation)
 			{
-				GetIdleAzimuthAndElevation(out idleAzimuth, out idleElevation);
+				GetIdleAzimuthAndElevation(out IdleAzimuth, out IdleElevation);
 			}
 
-			float targetElevation = elev - idleElevation;
-			float targetAzimuth = az - idleAzimuth;
+			float targetElevation = elev - IdleElevation;
+			float targetAzimuth = az - IdleAzimuth;
 
 			float elevationAngleDifference = targetElevation - Elevation;
 			float azimuthAngleDifference = targetAzimuth - Azimuth;
@@ -466,17 +480,23 @@ namespace WeaponsOverhaul
 
 		protected void RotateModels()
 		{
-			if (modelBase1 == null || modelBase2 == null || modelBarrel == null || !modelBase1.Render.IsChild(0))
+			Tools.Debug("Rotate 1");
+			if (modelBase1 == null || modelBase2 == null || modelBarrel == null)
 			{
-				try
+				Tools.Debug("Rotate 2");
+				if (CubeBlock.Subparts.ContainsKey("GatlingTurretBase1"))
 				{
 					modelBase1 = CubeBlock.Subparts["GatlingTurretBase1"];
 					modelBase2 = modelBase1.Subparts["GatlingTurretBase2"];
 					modelBarrel = modelBase2.Subparts["GatlingBarrel"];
-				}
-				catch { }
 
-				if (modelBase1 == null || modelBase2 == null || modelBarrel == null || !modelBase1.Render.IsChild(0))
+					if (!modelBase1.Render.IsChild(0))
+					{
+						ControlLayer.Entity.NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+						return;
+					}
+				}
+				else
 				{
 					return;
 				}
@@ -505,36 +525,16 @@ namespace WeaponsOverhaul
 
 		private void ClampAzimuthAndElevation()
 		{
-			Azimuth = ClampAzimuth(Azimuth);
-			Elevation = ClampElevation(Elevation);
-		}
 
-		private float ClampAzimuth(float value)
-		{
-			if (IsAzimuthLimited())
+			if (IsAzimuthLimited)
 			{
-				value = Math.Min(MaxAzimuthRadians, Math.Max(MinAzimuthRadians, value));
+				Azimuth = Math.Min(MaxAzimuthRadians, Math.Max(MinAzimuthRadians, Azimuth));
 			}
-			return value;
-		}
 
-		private float ClampElevation(float value)
-		{
-			if (IsElevationLimited())
-			{
-				value = Math.Min(MaxElevationRadians, Math.Max(MinElevationRadians, value));
+			if (IsElevationLimited)
+			{ 
+				Elevation = Math.Min(MaxElevationRadians, Math.Max(MinElevationRadians, Elevation));
 			}
-			return value;
-		}
-
-		private bool IsAzimuthLimited()
-		{
-			return Math.Abs(MaxAzimuthRadians - MinAzimuthRadians - MathHelper.Pi * 2f) > 0.01f;
-		}
-
-		private bool IsElevationLimited()
-		{
-			return Math.Abs(MaxElevationRadians - MinElevationRadians - MathHelper.Pi * 2f) > 0.01f;
 		}
 	}
 }
