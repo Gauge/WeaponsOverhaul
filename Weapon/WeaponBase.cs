@@ -1,4 +1,5 @@
 ﻿using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.Weapons;
@@ -209,6 +210,7 @@ namespace WeaponsOverhaul
 			State.ValueChanged += StateChanged;
 			Reloading = new NetSync<bool>(ControlLayer, TransferType.ServerToClient, false);
 			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
+			InventoryComponent.GetOrAddComponent(CubeBlock.CubeGrid);
 		}
 
 		/// <summary>
@@ -227,6 +229,7 @@ namespace WeaponsOverhaul
 			InitializeSound();
 		}
 
+		int count = 0;
 		/// <summary>
 		/// First call in the update loop
 		/// Used to update the firing state of this weapon
@@ -242,6 +245,17 @@ namespace WeaponsOverhaul
 				//}
 
 				return;
+			}
+
+			count++;
+			if (count >= 300)
+			{
+				MyInventory inventory = CubeBlock.GetInventory();
+				if ((inventory.CurrentVolume.RawValue / inventory.MaxVolume.RawValue) < InventoryFillFactorMin)
+				{
+					InventoryComponent.Fill(CubeBlock, gun.GunBase.CurrentAmmoMagazineId);
+				}
+				count = 0;
 			}
 
 			byte notify = 0x0;
@@ -282,6 +296,7 @@ namespace WeaponsOverhaul
 			}
 			else
 			{
+
 				bool enoughAmmo = gun.GunBase.HasEnoughAmmunition();
 				if (!enoughAmmo)
 				{
@@ -379,6 +394,20 @@ namespace WeaponsOverhaul
 				Core.NotifyNextFrame(Block.CubeGrid.EntityId);
 				Notify = notify;
 			}
+		}
+
+		public virtual void Update100() 
+		{
+			Tools.Debug("Made it!");
+
+			//if (inventory.CurrentVolume == 0)
+			//{
+			//	InventoryComponent.Fill(CubeBlock, gun.GunBase.CurrentAmmoMagazineId);
+			//}
+			//else if (IsShooting)
+			//{
+
+			//}
 		}
 
 		private void StartShootSound()

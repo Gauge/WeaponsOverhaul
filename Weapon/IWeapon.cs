@@ -10,6 +10,7 @@ namespace WeaponsOverhaul
 		void Start();
 		void SystemRestart();
 		void Update();
+		void Update100();
 		void Animate();
 		void Close();
 	}

@@ -36,7 +36,7 @@ namespace WeaponsOverhaul
 		public override void Init(MyObjectBuilder_SessionComponent sessionComponent)
 		{
 			NetworkAPI.LogNetworkTraffic = false;
-			Tools.DebugMode = false;
+			Tools.DebugMode = true;
 
 			IsNotificationInitialized = MyAPIGateway.Utilities.IsDedicated;
 

@@ -80,8 +80,6 @@ namespace WeaponsOverhaul
 		public int AmmoPullAmount;
 		[ProtoMember(220)]
 		public float InventoryFillFactorMin;
-		[ProtoMember(230)]
-		public float InventoryFillFactorMax;
 
 		[XmlIgnore]
 		public MySoundPair NoAmmoSoundPair;
@@ -122,7 +120,6 @@ namespace WeaponsOverhaul
 				MaxFov = MaxFov,
 				AmmoPullAmount = AmmoPullAmount,
 				InventoryFillFactorMin = InventoryFillFactorMin,
-				InventoryFillFactorMax = InventoryFillFactorMax,
 			};
 		}
 
@@ -157,7 +154,6 @@ namespace WeaponsOverhaul
 			MaxFov = w.MaxFov;
 			AmmoPullAmount = w.AmmoPullAmount;
 			InventoryFillFactorMin = w.InventoryFillFactorMin;
-			InventoryFillFactorMax = w.InventoryFillFactorMax;
 		}
 
 		public static WeaponDefinition CreateFromKeenDefinition(MyWeaponBlockDefinition b, MyWeaponDefinition w)
@@ -195,7 +191,6 @@ namespace WeaponsOverhaul
 					MaxFov = lb.MaxFov,
 					AmmoPullAmount = lb.AmmoPullAmount,
 					InventoryFillFactorMin = lb.InventoryFillFactorMin,
-					InventoryFillFactorMax = lb.InventoryFillFactorMax,
 				};
 			}
 			else
@@ -216,6 +211,7 @@ namespace WeaponsOverhaul
 					ReloadSoundPair = w.ReloadSound,
 					SecondarySoundPair = w.SecondarySound,
 					AmmoData = WeaponAmmoDefinition.CreateFromKeenDefinition(w.WeaponAmmoDatas[0]),
+					InventoryFillFactorMin = b.InventoryFillFactorMin,
 				};
 			}
 		}

@@ -110,12 +110,18 @@ namespace WeaponsOverhaul
 			IMyCubeBlock block = Entity as IMyCubeBlock;
 			if (block.CubeGrid.Physics == null || !block.CubeGrid.Physics.Enabled)
 				return;
+
 			NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
 		}
 
 		public override void UpdateBeforeSimulation()
 		{
 			Weapon.Update();
+		}
+
+		public override void UpdateBeforeSimulation100()
+		{
+			Weapon.Update100();
 		}
 
 		public override void UpdateAfterSimulation()
