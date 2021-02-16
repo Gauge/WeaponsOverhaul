@@ -47,14 +47,13 @@ namespace WeaponsOverhaul
 
 		private float MaximumRangeSqrd = 0;
 
-
 		private MyEntitySubpart modelBase1;
 		private MyEntitySubpart modelBase2;
 		private MyEntitySubpart modelBarrel;
 
 		private MyEntity Target;
 
-		private TargetFlags TargetMode = TargetFlags.LargeShips | TargetFlags.SmallShips | TargetFlags.Characters | TargetFlags.Stations;
+		private TargetFlags TargetMode = TargetFlags.LargeShips | TargetFlags.SmallShips | TargetFlags.Characters | TargetFlags.Stations | TargetFlags.Meteors;
 
 		public bool TargetMeteors
 		{
@@ -236,7 +235,7 @@ namespace WeaponsOverhaul
 
 		public override void Update()
 		{
-			if (AiEnabled)
+			if (AiEnabled && CubeBlock.IsWorking)
 			{
 				//update per frame variables
 				MaximumRangeSqrd = (CubeBlock as IMyLargeTurretBase).Range;
@@ -311,35 +310,43 @@ namespace WeaponsOverhaul
 			}
 		}
 
-		/// <summary>
-		/// Adjusts azimuth and elevation over time to face the target within turret limits
-		/// </summary>
-		/// <returns>the angle remaining before the turret is facing the target</returns>
+		private class AzimuthAndElevation
+		{
+			public float Azimuth;
+			public float Elevation;
+		}
+
 		private float LookAt(Vector3D target)
 		{
-			float az = 0;
-			float elev = 0;
+			AzimuthAndElevation ori = GetTargetAzimuthElevation(target);
 
-			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
-			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out az, out elev);
-
-			float targetElevation = elev - IdleElevation;
-			float targetAzimuth = az - IdleAzimuth;
-
-			float elevationAngleDifference = targetElevation - Elevation;
-			float azimuthAngleDifference = targetAzimuth - Azimuth;
+			float elevationAngleDifference = ori.Elevation - Elevation;
+			float azimuthAngleDifference = ori.Azimuth - Azimuth;
 
 			float azimuthTravel = MathHelper.Clamp(azimuthAngleDifference, -AzimuthSpeedPerTick, AzimuthSpeedPerTick);
 
 			if (Math.Abs(azimuthAngleDifference) < Math.PI)
-				Azimuth += azimuthTravel;
+				Azimuth = Azimuth + azimuthTravel;
 			else
-				Azimuth -= azimuthTravel;
+				Azimuth = Azimuth - azimuthTravel;
 
-			Elevation += MathHelper.Clamp(targetElevation - Elevation, -ElevationSpeedPerTick, ElevationSpeedPerTick);
+			Elevation = Elevation + MathHelper.Clamp(elevationAngleDifference, -ElevationSpeedPerTick, ElevationSpeedPerTick);
 			Azimuth = MathHelper.WrapAngle(Azimuth);
 
 			return (azimuthAngleDifference > elevationAngleDifference) ? azimuthAngleDifference : elevationAngleDifference;
+		}
+
+		private AzimuthAndElevation GetTargetAzimuthElevation(Vector3D target)
+		{
+			float az = 0;
+			float elev = 0;
+			Vector3D muzzleWorldPosition = gun.GunBase.GetMuzzleWorldPosition();
+			Vector3.GetAzimuthAndElevation(Vector3.Normalize(Vector3D.TransformNormal(target - muzzleWorldPosition, CubeBlock.PositionComp.WorldMatrixInvScaled)), out az, out elev);
+
+			return new AzimuthAndElevation() {
+				Azimuth = MathHelper.WrapAngle(az - IdleAzimuth),
+				Elevation = elev - IdleElevation,
+			};
 		}
 
 		// Whip's CalculateProjectileInterceptPosition Method
@@ -388,27 +395,16 @@ namespace WeaponsOverhaul
 					continue;
 				}
 
-				IMyCharacter myCharacter = ent as IMyCharacter;
-				if (myCharacter != null)
+				if (IsValidCharacter(ent as IMyCharacter))
 				{
-					if (!TargetCharacters || myCharacter.IsDead) // dont target if not set or dead
-						continue;
-
-					IMyPlayer player = MyAPIGateway.Players.GetPlayerControllingEntity(ent);
-					MyRelationsBetweenPlayerAndBlock relation = player.GetRelationTo(CubeBlock.OwnerId);
-
-					if (relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
-						TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
+					Vector3D characterPosition = ent.WorldMatrix.Translation;
+					double rangeSqrd = (CubeBlock.WorldMatrix.Translation - characterPosition).LengthSquared();
+					if (rangeSqrd < MaximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd && // is closest
+						IsPositionInTurretArch(characterPosition) && // is in arch
+						IsTargetVisible(ent, characterPosition)) // is visible
 					{
-						double rangeSqrd = (CubeBlock.WorldMatrix.Translation - ent.WorldMatrix.Translation).LengthSquared();
-						if (rangeSqrd < MaximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd)
-						{
-							if (IsTargetVisible(ent, ent.WorldMatrix.Translation))
-							{
-								likelyTarget = ent;
-								likelyTargetDistanceSqrd = rangeSqrd;
-							}
-						}
+						likelyTarget = ent;
+						likelyTargetDistanceSqrd = rangeSqrd;
 					}
 				}
 
@@ -439,15 +435,15 @@ namespace WeaponsOverhaul
 						if (relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
 							TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
 						{
-							double rangeSqrd = (CubeBlock.WorldMatrix.Translation - block.WorldMatrix.Translation).LengthSquared();
+							Vector3D blockPosition = block.WorldMatrix.Translation;
+							double rangeSqrd = (CubeBlock.WorldMatrix.Translation - blockPosition).LengthSquared();
 							if (rangeSqrd < MaximumRangeSqrd &&
-								(rangeSqrd < likelyTargetDistanceSqrd || (block is IMyDecoy && !(likelyTarget is IMyDecoy))))
+								(rangeSqrd < likelyTargetDistanceSqrd || (block is IMyDecoy && !(likelyTarget is IMyDecoy))) &&
+								IsPositionInTurretArch(blockPosition) &&
+								IsTargetVisible(block, blockPosition))
 							{
-								if (IsTargetVisible(block, block.WorldMatrix.Translation))
-								{
-									likelyTarget = block;
-									likelyTargetDistanceSqrd = rangeSqrd;
-								}
+								likelyTarget = block;
+								likelyTargetDistanceSqrd = rangeSqrd;
 							}
 						}
 					}
@@ -476,7 +472,7 @@ namespace WeaponsOverhaul
 			return likelyTarget;
 		}
 
-		private bool IsTargetVisible(MyEntity target, Vector3D predictedPosition) 
+		private bool IsTargetVisible(MyEntity target, Vector3D predictedPosition)
 		{
 			if (target == null)
 			{
@@ -489,18 +485,23 @@ namespace WeaponsOverhaul
 
 			Vector3D from = gun.GunBase.GetMuzzleWorldPosition() + gun.GunBase.WorldMatrix.Forward * 0.5;
 
-			IHitInfo hit;
-			MyAPIGateway.Physics.CastLongRay(from, predictedPosition, out hit, false);
+			List<IHitInfo> hits = new List<IHitInfo>();
+			MyAPIGateway.Physics.CastRay(from, predictedPosition, hits, 15);
 
-			if (hit != null && hit.HitEntity != null)
+			foreach (IHitInfo hit in hits)
 			{
-				if (target == hit.HitEntity || target.Parent == hit.HitEntity || (target.Parent != null && target.Parent == hit.HitEntity.Parent) || hit.HitEntity is MyFloatingObject || hit.HitEntity.GetType().Name == "MyMissile")
+				if (hit != null && hit.HitEntity != null)
 				{
-					return true;
+					if (target == hit.HitEntity || target.Parent == hit.HitEntity || (target.Parent != null && target.Parent == hit.HitEntity.Parent) || hit.HitEntity is MyFloatingObject || hit.HitEntity.GetType().Name == "MyMissile")
+					{
+						continue;
+					}
+
+					return false;
 				}
 			}
 
-			return false;
+			return true;
 		}
 
 		private bool IsValidTarget(MyEntity ent)
@@ -512,7 +513,33 @@ namespace WeaponsOverhaul
 			if (distanceSqrd > MaximumRangeSqrd)
 				return false;
 
+			if (!IsPositionInTurretArch(ent.WorldMatrix.Translation))
+				return false;
+
 			return IsValidCharacter(ent as IMyCharacter) || IsValidCubeBlock(ent as IMyCubeBlock) || IsValidMeteor(ent as MyMeteor);
+		}
+
+		private bool IsPositionInTurretArch(Vector3D point)
+		{
+			AzimuthAndElevation ori = GetTargetAzimuthElevation(point);
+
+			if (IsAzimuthLimited)
+			{
+				if (ori.Azimuth > MaxAzimuthRadians || ori.Azimuth < MinAzimuthRadians)
+				{
+					return false;
+				}
+			}
+
+			if (IsElevationLimited)
+			{
+				if (ori.Elevation > MaxElevationRadians || ori.Elevation < MinElevationRadians)
+				{
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		private bool IsValidCharacter(IMyCharacter character)
