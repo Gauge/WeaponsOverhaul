@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -397,7 +398,7 @@ namespace WeaponsOverhaul
 
 				if (IsValidCharacter(ent as IMyCharacter))
 				{
-					Vector3D characterPosition = ent.WorldMatrix.Translation;
+					Vector3D characterPosition = ent.PositionComp.WorldVolume.Center + (ent.WorldMatrix.Up * 0.5f);
 					double rangeSqrd = (CubeBlock.WorldMatrix.Translation - characterPosition).LengthSquared();
 					if (rangeSqrd < MaximumRangeSqrd && rangeSqrd < likelyTargetDistanceSqrd && // is closest
 						IsPositionInTurretArch(characterPosition) && // is in arch
@@ -425,9 +426,32 @@ namespace WeaponsOverhaul
 							continue;
 					}
 
+					bool foundEnemyGrid = false;
+					if (grid.BigOwners.Count == 0 && TargetNeutrals)
+					{
+						foundEnemyGrid = true;
+					}
+
+					foreach (long owner in grid.BigOwners)
+					{
+						MyRelationsBetweenPlayerAndBlock relation = CubeBlock.GetUserRelationToOwner(owner);
+
+						if (relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
+							TargetNeutrals && (relation == MyRelationsBetweenPlayerAndBlock.Neutral || relation == MyRelationsBetweenPlayerAndBlock.NoOwnership))
+						{
+							foundEnemyGrid = true;
+						}
+					}
+
+					if (!foundEnemyGrid)
+						continue;
+
 					foreach (MyCubeBlock block in grid.GetFatBlocks())
 					{
-						if (likelyTarget is IMyDecoy && !(block is IMyDecoy))
+						if (likelyTarget is IMyDecoy)
+							break;
+
+						if (likelyTarget != null && !(block is IMyDecoy))
 							continue;
 
 						MyRelationsBetweenPlayerAndBlock relation = block.GetUserRelationToOwner(CubeBlock.OwnerId);
@@ -550,6 +574,10 @@ namespace WeaponsOverhaul
 					return false;
 
 				IMyPlayer player = MyAPIGateway.Players.GetPlayerControllingEntity(character);
+
+				if (player == null)
+					return false;
+
 				MyRelationsBetweenPlayerAndBlock relation = player.GetRelationTo(CubeBlock.OwnerId);
 
 				if (!(relation == MyRelationsBetweenPlayerAndBlock.Enemies ||
