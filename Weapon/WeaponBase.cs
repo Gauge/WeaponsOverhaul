@@ -111,6 +111,9 @@ namespace WeaponsOverhaul
 		protected int CurrentShotInBurst = 0;
 		protected float CurrentIdleReloadTime = 0;
 		protected DateTime LastShootTime;
+		protected DateTime LastAmmoFeed;
+		protected MyInventory Inventory;
+		protected int AmmoFeedInterval = 5000;
 
 		protected bool MuzzleFlashActive;
 		protected float MuzzleFlashCurrentTime;
@@ -128,6 +131,7 @@ namespace WeaponsOverhaul
 		public MyDefinitionId WeaponDefinition;
 
 		protected byte Notify = 0x0;
+
 
 		/// <summary>
 		/// Called when game logic is added to container
@@ -211,6 +215,7 @@ namespace WeaponsOverhaul
 			Reloading = new NetSync<bool>(ControlLayer, TransferType.ServerToClient, false);
 			DeviationIndex = new NetSync<sbyte>(ControlLayer, TransferType.ServerToClient, (sbyte)MyRandom.Instance.Next(0, sbyte.MaxValue));
 			InventoryComponent.GetOrAddComponent(CubeBlock.CubeGrid);
+			Inventory = CubeBlock.GetInventory();
 		}
 
 		/// <summary>
@@ -247,20 +252,18 @@ namespace WeaponsOverhaul
 				return;
 			}
 
-			count++;
-			if (count >= 300)
-			{
-				MyInventory inventory = CubeBlock.GetInventory();
-				if ((inventory.CurrentVolume.RawValue / inventory.MaxVolume.RawValue) < InventoryFillFactorMin)
-				{
-					InventoryComponent.Fill(CubeBlock, gun.GunBase.CurrentAmmoMagazineId);
-				}
-				count = 0;
-			}
-
 			byte notify = 0x0;
 			DateTime currentTime = DateTime.UtcNow;
 			double timeSinceLastShot = (currentTime - LastShootTime).TotalMilliseconds;
+			double timeSinceLastAmmoFeed = (currentTime - LastAmmoFeed).TotalMilliseconds;
+
+			if (timeSinceLastAmmoFeed > AmmoFeedInterval)
+			{
+				if ((Inventory.CurrentVolume.RawValue / Inventory.MaxVolume.RawValue) < InventoryFillFactorMin)
+				{
+					InventoryComponent.Fill(CubeBlock, gun.GunBase.CurrentAmmoMagazineId);
+				}
+			}
 
 			//if (!MyAPIGateway.Utilities.IsDedicated && MyAPIGateway.Session != null)
 			//{

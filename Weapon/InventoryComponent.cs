@@ -17,6 +17,8 @@ namespace WeaponsOverhaul
 		private MyCubeGrid Grid;
 		private HashSet<IMyInventory> Inventories = new HashSet<IMyInventory>();
 
+
+
 		public static InventoryComponent GetOrAddComponent(MyCubeGrid grid)
 		{
 			InventoryComponent gggc = grid.Components.Get<InventoryComponent>();
@@ -45,23 +47,17 @@ namespace WeaponsOverhaul
 			((IMyCubeGrid)Grid).OnBlockAdded += AddBlockInventory;
 			((IMyCubeGrid)Grid).OnBlockRemoved += RemoveBlockInventory;
 
-
 		}
 
-		public static void Fill(MyCubeBlock block, MyDefinitionId itemId) 
+		public void Fill(MyInventory target, MyDefinitionId itemId) 
 		{
-			
-			if (!block.HasInventory)
+
+			if (target == null)
 				return;
 
-			InventoryComponent comp = block.CubeGrid.Components.Get<InventoryComponent>();
-			if (comp == null)
-				return;
-
-			MyInventory target = block.GetInventory(0);
 			MyFixedPoint ammoNeeded = target.ComputeAmountThatFits(itemId);
 
-			foreach (MyInventory source in comp.Inventories)
+			foreach (MyInventory source in Inventories)
 			{
 				if (ammoNeeded == 0)
 					return;
@@ -86,8 +82,22 @@ namespace WeaponsOverhaul
 					ammoNeeded -= item.Value.Amount;
 				}
 			}
-
 		}
+
+		public static void Fill(MyCubeBlock block, MyDefinitionId itemId) 
+		{
+			
+			if (!block.HasInventory)
+				return;
+
+			InventoryComponent comp = block.CubeGrid.Components.Get<InventoryComponent>();
+			if (comp == null)
+				return;
+
+			comp.Fill(block.GetInventory(0), itemId);
+		}
+
+
 
 		public override void OnBeforeRemovedFromContainer()
 		{
